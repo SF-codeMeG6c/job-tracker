@@ -151,6 +151,19 @@ app.patch('/api/jobs/:id', requireAuth, async (req, res) => {
 
 // ─── Parties ──────────────────────────────────────────────────────────────────
 
+app.post('/api/parties', requireAuth, async (req, res) => {
+  try {
+    const { job_id, party_type, company_name, contact_name, contact_email, contact_phone } = req.body;
+    if (!job_id || !party_type) return res.status(400).json({ error: 'Job ID and party type required' });
+    const result = await query(
+      'INSERT INTO parties (job_id, party_type, company_name, contact_name, contact_email, contact_phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [job_id, party_type, company_name || null, contact_name || null, contact_email || null, contact_phone || null]
+    );
+    await query('UPDATE jobs SET updated_at = NOW() WHERE id = $1', [job_id]);
+    res.json({ id: result.rows[0].id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/parties/:id', requireAuth, async (req, res) => {
   try {
     const partyResult = await query('SELECT * FROM parties WHERE id = $1', [req.params.id]);

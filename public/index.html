@@ -273,7 +273,10 @@
           <button class="btn btn-sm" id="jd-toggle-status-btn" onclick="toggleJobStatus()"></button>
         </div>
       </div>
-      <h3>Parties</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0">Parties</h3>
+        <button class="btn btn-ghost btn-sm" onclick="openAddPartyModal()">+ Add Party</button>
+      </div>
       <div class="parties-grid" id="parties-grid"></div>
     </div>
   </main>
@@ -416,6 +419,23 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-add-commitment')">Cancel</button>
       <button class="btn btn-primary" onclick="saveCommitment()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-party">
+  <div class="modal">
+    <h3>Add Party</h3>
+    <div class="form-group"><label>Party Type / Role *</label><input id="ap-type" placeholder="e.g. Contractor, HOA, City Inspector, Plumber…" /></div>
+    <div class="form-group"><label>Company Name</label><input id="ap-company" placeholder="Company name" /></div>
+    <div class="form-group"><label>Contact Name</label><input id="ap-contact" placeholder="Contact person" /></div>
+    <div class="row">
+      <div class="form-group"><label>Email</label><input id="ap-email" type="email" /></div>
+      <div class="form-group"><label>Phone</label><input id="ap-phone" type="tel" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-party')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveNewParty()">Add Party</button>
     </div>
   </div>
 </div>
@@ -701,6 +721,30 @@
 
   // ── Modals ────────────────────────────────────────────────────────────────
   function openNewJobModal() { openModal('modal-new-job'); }
+
+  function openAddPartyModal() {
+    ['ap-type','ap-company','ap-contact','ap-email','ap-phone'].forEach(id => document.getElementById(id).value = '');
+    openModal('modal-add-party');
+  }
+
+  async function saveNewParty() {
+    const party_type = document.getElementById('ap-type').value.trim();
+    if (!party_type) return alert('Please enter a party type/role.');
+    const res = await fetch('/api/parties', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        job_id: currentJob.id,
+        party_type,
+        company_name: document.getElementById('ap-company').value.trim(),
+        contact_name: document.getElementById('ap-contact').value.trim(),
+        contact_email: document.getElementById('ap-email').value.trim(),
+        contact_phone: document.getElementById('ap-phone').value.trim()
+      })
+    });
+    if (!res.ok) { const e = await res.json(); return alert(e.error); }
+    closeModal('modal-add-party');
+    loadJobDetail(currentJob.id);
+  }
 
   function openEditJobModal() {
     document.getElementById('ej-number').value = currentJob.job_number;
