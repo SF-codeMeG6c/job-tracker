@@ -1,8 +1,9 @@
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { query, initDb } = require('./db');
+const { query, initDb, pool } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -15,13 +16,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.set('trust proxy', 1);
 app.use(session({
+  store: new pgSession({ pool, createTableIfMissing: true }),
   secret: process.env.SESSION_SECRET || 'job-tracker-secret-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    secure: 'auto',
-    sameSite: 'lax'
+    secure: true,
+    sameSite: 'none'
   }
 }));
 

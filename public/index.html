@@ -524,7 +524,9 @@
   // ── Jobs ──────────────────────────────────────────────────────────────────
   async function loadJobs() {
     const res = await fetch('/api/jobs');
-    allJobs = await res.json();
+    if (!res.ok) { renderJobs([]); return; }
+    const data = await res.json();
+    allJobs = Array.isArray(data) ? data : [];
     renderJobs(allJobs);
   }
 

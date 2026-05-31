@@ -80,4 +80,4 @@ async function initDb() {
   console.log('Database initialized');
 }
 
-module.exports = { query, initDb };
+module.exports = { query, initDb, pool };
