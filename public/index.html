@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Tracker – Freeman & Son</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --border: #e0e3e8;
+      --primary: #1e3a5f;
+      --primary-light: #2d5a9e;
+      --accent: #e8600a;
+      --success: #1a7a4a;
+      --warning: #b45309;
+      --danger: #c0392b;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Auth ── */
+    #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .auth-card { background: var(--surface); border-radius: 12px; padding: 40px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .auth-card h1 { color: var(--primary); margin-bottom: 4px; font-size: 1.5rem; }
+    .auth-card p { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+    .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .auth-tab { flex: 1; padding: 8px; border: 1px solid var(--border); background: var(--bg); border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .auth-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* ── Layout ── */
+    #app { display: none; min-height: 100vh; }
+    header { background: var(--primary); color: white; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    .header-right { display: flex; align-items: center; gap: 16px; font-size: 0.85rem; }
+    nav { display: flex; gap: 4px; }
+    .nav-btn { background: none; border: none; color: rgba(255,255,255,0.75); cursor: pointer; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; transition: all 0.15s; }
+    .nav-btn.active, .nav-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Shared ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 16px; }
+    h3 { font-size: 1rem; color: var(--primary); margin-bottom: 12px; }
+
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow); }
+    .card + .card { margin-top: 16px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.15s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover { opacity: 0.9; }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-danger { background: var(--danger); color: white; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-open { background: #dbeafe; color: #1d4ed8; }
+    .badge-closed { background: #d1fae5; color: #065f46; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-met { background: #d1fae5; color: #065f46; }
+    .badge-overdue { background: #fee2e2; color: #991b1b; }
+    .badge-active { background: #dbeafe; color: #1e40af; }
+    .badge-stalled { background: #f3e8ff; color: #6b21a8; }
+    .badge-complete { background: #d1fae5; color: #065f46; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: inherit; background: var(--surface); color: var(--text); }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(45,90,158,0.1); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .row { display: flex; gap: 12px; }
+    .row .form-group { flex: 1; }
+
+    /* ── Dashboard ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+    .stat-card .number { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-card .label { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .stat-card.danger .number { color: var(--danger); }
+    .stat-card.warning .number { color: var(--warning); }
+
+    .alert-list { list-style: none; }
+    .alert-item { padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.15s; }
+    .alert-item:hover { opacity: 0.85; }
+    .alert-item.overdue { background: #fee2e2; border-left: 3px solid var(--danger); }
+    .alert-item.due-soon { background: #fef3c7; border-left: 3px solid #d97706; }
+    .alert-item .meta { font-size: 0.78rem; color: var(--muted); }
+    .alert-item .title { font-size: 0.875rem; font-weight: 500; }
+
+    /* ── Jobs list ── */
+    .jobs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .search-bar { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; width: 240px; }
+    .jobs-table { width: 100%; border-collapse: collapse; }
+    .jobs-table th { text-align: left; padding: 10px 12px; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 2px solid var(--border); }
+    .jobs-table td { padding: 12px; font-size: 0.875rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .jobs-table tr:hover td { background: #f8f9fb; cursor: pointer; }
+    .overdue-chip { background: #fee2e2; color: var(--danger); font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+
+    /* ── Job detail ── */
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-light); background: none; border: none; cursor: pointer; font-size: 0.875rem; margin-bottom: 16px; padding: 0; }
+    .back-btn:hover { text-decoration: underline; }
+    .job-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .job-title h2 { margin-bottom: 4px; }
+    .job-meta { font-size: 0.82rem; color: var(--muted); }
+
+    .parties-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .party-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
+    .party-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--primary-light); }
+    .party-card.has-overdue { border-left: 3px solid var(--danger); }
+    .party-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .party-type { font-weight: 700; font-size: 0.95rem; color: var(--primary); }
+    .party-info { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .party-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
+
+    /* ── Party detail panel ── */
+    .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; }
+    .panel-overlay.open { display: flex; justify-content: flex-end; }
+    .side-panel { background: var(--surface); width: min(560px, 100vw); height: 100vh; overflow-y: auto; box-shadow: -4px 0 24px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
+    .panel-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 10; }
+    .panel-header h3 { margin: 0; font-size: 1.1rem; }
+    .panel-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); line-height: 1; }
+    .panel-body { padding: 20px; flex: 1; }
+
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-title { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+
+    .interaction-item { padding: 10px 12px; border-left: 3px solid var(--border); margin-bottom: 8px; background: var(--bg); border-radius: 0 6px 6px 0; }
+    .interaction-item .int-header { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+    .interaction-item .int-type { font-weight: 600; text-transform: capitalize; }
+    .interaction-item.email { border-color: #3b82f6; }
+    .interaction-item.call { border-color: #10b981; }
+    .interaction-item.meeting { border-color: #8b5cf6; }
+    .interaction-item .int-summary { font-size: 0.875rem; }
+    .interaction-item .btn-delete { opacity: 0; transition: opacity 0.15s; }
+    .interaction-item:hover .btn-delete { opacity: 1; }
+
+    .commitment-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; }
+    .commitment-item.overdue { border-color: var(--danger); background: #fff5f5; }
+    .commitment-item.met { opacity: 0.6; }
+    .commitment-check { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+    .commitment-text { flex: 1; }
+    .commitment-desc { font-size: 0.875rem; }
+    .commitment-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .commitment-meta .due-overdue { color: var(--danger); font-weight: 600; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: 12px; padding: 28px; width: min(480px, 95vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .modal h3 { margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    .empty { text-align: center; padding: 32px; color: var(--muted); font-size: 0.875rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    @media (max-width: 600px) {
+      .parties-grid { grid-template-columns: 1fr; }
+      .row { flex-direction: column; }
+      .jobs-header { flex-direction: column; align-items: stretch; }
+      .search-bar { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth Screen ── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>Freeman & Son</h1>
+    <p>Job Tracker — Sign in to continue</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+    </div>
+
+    <div id="login-form">
+      <div class="form-group"><label>Username</label><input id="login-username" type="text" placeholder="username" /></div>
+      <div class="form-group"><label>Password</label><input id="login-password" type="password" placeholder="password" /></div>
+      <div id="login-error" style="color:var(--danger);font-size:0.82rem;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="login()">Sign In</button>
+    </div>
+
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>Full Name</label><input id="reg-name" type="text" placeholder="Your name" /></div>
+      <div class="form-group"><label>Username</label><input id="reg-username" type="text" placeholder="username" /></div>
+      <div class="form-group"><label>Password</label><input id="reg-password" type="password" placeholder="password" /></div>
+      <div class="form-group"><label>Setup Key</label><input id="reg-key" type="password" placeholder="Ask your admin" /></div>
+      <div id="reg-error" style="color:var(--danger);font-size:0.82rem;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="register()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main App ── -->
+<div id="app">
+  <header>
+    <h1>📋 Freeman & Son — Job Tracker</h1>
+    <div class="header-right">
+      <nav>
+        <button class="nav-btn active" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-btn" onclick="showPage('jobs')">Jobs</button>
+      </nav>
+      <span id="user-name" style="opacity:0.7;"></span>
+      <button class="nav-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <h2>Dashboard</h2>
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="row" style="gap:20px; align-items:flex-start;">
+        <div style="flex:1">
+          <div class="card">
+            <h3>🚨 Overdue Commitments</h3>
+            <ul class="alert-list" id="overdue-list"><li class="empty">Loading…</li></ul>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="card">
+            <h3>⏳ Due Within 7 Days</h3>
+            <ul class="alert-list" id="due-soon-list"><li class="empty">Loading…</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs List -->
+    <div id="page-jobs" class="page">
+      <div class="jobs-header">
+        <h2 style="margin:0">Jobs</h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input class="search-bar" type="text" placeholder="Search jobs…" id="job-search" oninput="filterJobs()" />
+          <button class="btn btn-accent" onclick="openNewJobModal()">+ New Job</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="jobs-table">
+          <thead><tr>
+            <th>Job #</th><th>Customer</th><th>Address</th><th>Status</th>
+            <th>Overdue</th><th>Open Items</th><th>Last Updated</th>
+          </tr></thead>
+          <tbody id="jobs-tbody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Job Detail -->
+    <div id="page-job-detail" class="page">
+      <button class="back-btn" onclick="showPage('jobs')">← Back to Jobs</button>
+      <div class="job-header">
+        <div class="job-title">
+          <h2 id="jd-title"></h2>
+          <div class="job-meta" id="jd-meta"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="jd-status-badge"></span>
+          <button class="btn btn-ghost btn-sm" onclick="openEditJobModal()">Edit Job</button>
+          <button class="btn btn-sm" id="jd-toggle-status-btn" onclick="toggleJobStatus()"></button>
+        </div>
+      </div>
+      <h3>Parties</h3>
+      <div class="parties-grid" id="parties-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Party Detail Panel ── -->
+<div class="panel-overlay" id="party-panel" onclick="closePartyPanel(event)">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="panel-header">
+      <div>
+        <h3 id="panel-party-type"></h3>
+        <div id="panel-company" style="font-size:0.82rem;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <button class="panel-close" onclick="closePartyPanel()">✕</button>
+    </div>
+    <div class="panel-body">
+      <!-- Contact info -->
+      <div class="section-header" style="margin-bottom:10px;">
+        <span class="section-title">Contact Info</span>
+        <button class="btn btn-ghost btn-sm" onclick="openEditPartyModal()">Edit</button>
+      </div>
+      <div id="panel-contact-info" style="font-size:0.875rem;color:var(--muted);margin-bottom:16px;line-height:1.7;"></div>
+      <div id="panel-notes" style="font-size:0.82rem;background:var(--bg);padding:10px;border-radius:6px;margin-bottom:16px;display:none;"></div>
+
+      <!-- Status -->
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Party Status</label>
+        <select id="panel-status" onchange="updatePartyStatus(this.value)">
+          <option value="pending">Pending</option>
+          <option value="active">Active</option>
+          <option value="stalled">Stalled</option>
+          <option value="complete">Complete</option>
+        </select>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Commitments -->
+      <div class="section-header">
+        <span class="section-title">Commitments</span>
+        <button class="btn btn-ghost btn-sm" onclick="openAddCommitmentModal()">+ Add</button>
+      </div>
+      <div id="commitments-list" style="margin-bottom:20px;"></div>
+
+      <hr class="divider" />
+
+      <!-- Interactions -->
+      <div class="section-header">
+        <span class="section-title">Interaction Log</span>
+        <button class="btn btn-ghost btn-sm" onclick="openAddInteractionModal()">+ Log</button>
+      </div>
+      <div id="interactions-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modals ── -->
+<div class="modal-overlay" id="modal-new-job">
+  <div class="modal">
+    <h3>New Job</h3>
+    <div class="row">
+      <div class="form-group"><label>Job Number *</label><input id="nj-number" placeholder="e.g. 2024-0042" /></div>
+      <div class="form-group"><label>Status</label>
+        <select id="nj-status"><option value="open">Open</option><option value="closed">Closed</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Customer Name *</label><input id="nj-customer" placeholder="Full name" /></div>
+    <div class="form-group"><label>Address</label><input id="nj-address" placeholder="Job site address" /></div>
+    <div class="form-group"><label>Description / Notes</label><textarea id="nj-desc" placeholder="Brief description of the job…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-job')">Cancel</button>
+      <button class="btn btn-accent" onclick="createJob()">Create Job</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-job">
+  <div class="modal">
+    <h3>Edit Job</h3>
+    <div class="row">
+      <div class="form-group"><label>Job Number</label><input id="ej-number" /></div>
+      <div class="form-group"><label>Status</label>
+        <select id="ej-status"><option value="open">Open</option><option value="closed">Closed</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Customer Name</label><input id="ej-customer" /></div>
+    <div class="form-group"><label>Address</label><input id="ej-address" /></div>
+    <div class="form-group"><label>Description</label><textarea id="ej-desc"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-job')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditJob()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-party">
+  <div class="modal">
+    <h3 id="ep-title">Edit Party</h3>
+    <div class="form-group"><label>Company Name</label><input id="ep-company" /></div>
+    <div class="form-group"><label>Contact Name</label><input id="ep-contact" /></div>
+    <div class="row">
+      <div class="form-group"><label>Email</label><input id="ep-email" type="email" /></div>
+      <div class="form-group"><label>Phone</label><input id="ep-phone" type="tel" /></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="ep-notes"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-party')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditParty()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-interaction">
+  <div class="modal">
+    <h3>Log Interaction</h3>
+    <div class="row">
+      <div class="form-group"><label>Type</label>
+        <select id="ai-type">
+          <option value="email">Email</option>
+          <option value="call">Phone Call</option>
+          <option value="meeting">Meeting</option>
+          <option value="note">Internal Note</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Date</label><input id="ai-date" type="date" /></div>
+    </div>
+    <div class="form-group"><label>Summary *</label><textarea id="ai-summary" placeholder="What was discussed, decided, or communicated…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-interaction')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveInteraction()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-commitment">
+  <div class="modal">
+    <h3>Add Commitment</h3>
+    <div class="form-group"><label>What did they commit to? *</label><textarea id="ac-desc" placeholder="e.g. Provide updated report by end of week"></textarea></div>
+    <div class="form-group"><label>Due Date</label><input id="ac-due" type="date" /></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-commitment')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCommitment()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let currentJob = null;
+  let currentParty = null;
+  let allJobs = [];
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0) === (tab==='login')));
+    document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
+    document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+  }
+
+  async function login() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const err = document.getElementById('login-error');
+    err.style.display = 'none';
+    const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
+    if (res.ok) { const u = await res.json(); initApp(u); }
+    else { const e = await res.json(); err.textContent = e.error; err.style.display = ''; }
+  }
+
+  async function register() {
+    const display_name = document.getElementById('reg-name').value.trim();
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const setup_key = document.getElementById('reg-key').value;
+    const err = document.getElementById('reg-error');
+    err.style.display = 'none';
+    const res = await fetch('/api/auth/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({display_name, username, password, setup_key}) });
+    if (res.ok) { switchAuthTab('login'); alert('Account created! Sign in.'); }
+    else { const e = await res.json(); err.textContent = e.error; err.style.display = ''; }
+  }
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+
+  function initApp(user) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-name').textContent = user.display_name || user.username;
+    showPage('dashboard');
+    loadDashboard();
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  function showPage(page, data) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    if (page === 'dashboard') { document.querySelectorAll('.nav-btn')[0].classList.add('active'); loadDashboard(); }
+    if (page === 'jobs') { document.querySelectorAll('.nav-btn')[1].classList.add('active'); loadJobs(); }
+    if (page === 'job-detail' && data) loadJobDetail(data);
+  }
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+    const { stats, overdue, dueSoon } = data;
+
+    document.getElementById('stat-grid').innerHTML = `
+      <div class="stat-card"><div class="number">${stats.total_jobs}</div><div class="label">Total Jobs</div></div>
+      <div class="stat-card"><div class="number">${stats.open_jobs}</div><div class="label">Open Jobs</div></div>
+      <div class="stat-card"><div class="number">${stats.closed_jobs}</div><div class="label">Closed Jobs</div></div>
+      <div class="stat-card danger"><div class="number">${overdue.length}</div><div class="label">Overdue Commitments</div></div>
+      <div class="stat-card warning"><div class="number">${dueSoon.length}</div><div class="label">Due This Week</div></div>
+    `;
+
+    const overdueList = document.getElementById('overdue-list');
+    overdueList.innerHTML = overdue.length ? overdue.map(c => `
+      <li class="alert-item overdue" onclick="goToJob(${c.job_id})">
+        <div>
+          <div class="title">${esc(c.description)}</div>
+          <div class="meta">${esc(c.job_number)} — ${esc(c.customer_name)} · ${esc(c.party_type)}</div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--danger);font-weight:600;white-space:nowrap;">${formatDate(c.due_date)}</div>
+      </li>`).join('') : '<li class="empty">No overdue commitments 🎉</li>';
+
+    const dueSoonList = document.getElementById('due-soon-list');
+    dueSoonList.innerHTML = dueSoon.length ? dueSoon.map(c => `
+      <li class="alert-item due-soon" onclick="goToJob(${c.job_id})">
+        <div>
+          <div class="title">${esc(c.description)}</div>
+          <div class="meta">${esc(c.job_number)} — ${esc(c.customer_name)} · ${esc(c.party_type)}</div>
+        </div>
+        <div style="font-size:0.78rem;color:#92400e;font-weight:600;white-space:nowrap;">${formatDate(c.due_date)}</div>
+      </li>`).join('') : '<li class="empty">Nothing due this week</li>';
+  }
+
+  async function goToJob(jobId) {
+    showPage('jobs');
+    await loadJobs();
+    loadJobDetail(jobId);
+    showPage('job-detail', jobId);
+  }
+
+  // ── Jobs ──────────────────────────────────────────────────────────────────
+  async function loadJobs() {
+    const res = await fetch('/api/jobs');
+    allJobs = await res.json();
+    renderJobs(allJobs);
+  }
+
+  function renderJobs(jobs) {
+    const tbody = document.getElementById('jobs-tbody');
+    if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No jobs yet. Create your first job.</td></tr>'; return; }
+    tbody.innerHTML = jobs.map(j => `
+      <tr onclick="openJob(${j.id})">
+        <td><strong>${esc(j.job_number)}</strong></td>
+        <td>${esc(j.customer_name)}</td>
+        <td>${esc(j.address || '—')}</td>
+        <td><span class="badge badge-${j.status}">${j.status}</span></td>
+        <td>${j.overdue_count > 0 ? `<span class="overdue-chip">⚠ ${j.overdue_count}</span>` : '—'}</td>
+        <td>${j.open_commitments || 0}</td>
+        <td>${formatDate(j.updated_at)}</td>
+      </tr>`).join('');
+  }
+
+  function filterJobs() {
+    const q = document.getElementById('job-search').value.toLowerCase();
+    renderJobs(allJobs.filter(j =>
+      j.job_number.toLowerCase().includes(q) ||
+      j.customer_name.toLowerCase().includes(q) ||
+      (j.address || '').toLowerCase().includes(q)
+    ));
+  }
+
+  async function openJob(id) {
+    showPage('job-detail', id);
+  }
+
+  // ── Job Detail ────────────────────────────────────────────────────────────
+  async function loadJobDetail(id) {
+    const res = await fetch('/api/jobs/' + id);
+    currentJob = await res.json();
+    document.getElementById('jd-title').textContent = `${currentJob.job_number} — ${currentJob.customer_name}`;
+    document.getElementById('jd-meta').textContent = [currentJob.address, currentJob.description].filter(Boolean).join(' · ') || 'No additional info';
+    document.getElementById('jd-status-badge').innerHTML = `<span class="badge badge-${currentJob.status}">${currentJob.status}</span>`;
+    const toggleBtn = document.getElementById('jd-toggle-status-btn');
+    if (currentJob.status === 'open') { toggleBtn.textContent = 'Close Job'; toggleBtn.className = 'btn btn-ghost btn-sm'; }
+    else { toggleBtn.textContent = 'Reopen Job'; toggleBtn.className = 'btn btn-primary btn-sm'; }
+    renderParties(currentJob.parties);
+  }
+
+  function renderParties(parties) {
+    const grid = document.getElementById('parties-grid');
+    grid.innerHTML = parties.map(p => {
+      const hasOverdue = p.overdue_count > 0;
+      const info = [p.company_name, p.contact_name].filter(Boolean).join(' · ') || 'No contact added';
+      return `
+        <div class="party-card ${hasOverdue ? 'has-overdue' : ''}" onclick="openPartyPanel(${p.id})">
+          <div class="party-header">
+            <span class="party-type">${esc(p.party_type)}</span>
+            <span class="badge badge-${p.status}">${p.status}</span>
+          </div>
+          <div class="party-info">${esc(info)}</div>
+          ${p.contact_email ? `<div class="party-info">${esc(p.contact_email)}</div>` : ''}
+          <div class="party-footer">
+            <span>${p.open_commitments || 0} open commitment${p.open_commitments !== 1 ? 's' : ''}${hasOverdue ? ` · <span style="color:var(--danger)">⚠ ${p.overdue_count} overdue</span>` : ''}</span>
+            <span>${p.last_contact ? 'Last: ' + formatDate(p.last_contact) : 'No contact yet'}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function toggleJobStatus() {
+    const newStatus = currentJob.status === 'open' ? 'closed' : 'open';
+    await fetch('/api/jobs/' + currentJob.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: newStatus }) });
+    loadJobDetail(currentJob.id);
+  }
+
+  // ── Party Panel ───────────────────────────────────────────────────────────
+  async function openPartyPanel(partyId) {
+    const res = await fetch('/api/parties/' + partyId);
+    currentParty = await res.json();
+
+    document.getElementById('panel-party-type').textContent = currentParty.party_type;
+    document.getElementById('panel-company').textContent = currentParty.company_name || 'No company set';
+    document.getElementById('panel-status').value = currentParty.status;
+
+    const contactParts = [
+      currentParty.contact_name && `<strong>${esc(currentParty.contact_name)}</strong>`,
+      currentParty.contact_email && `<a href="mailto:${esc(currentParty.contact_email)}" style="color:var(--primary-light)">${esc(currentParty.contact_email)}</a>`,
+      currentParty.contact_phone && esc(currentParty.contact_phone)
+    ].filter(Boolean);
+    document.getElementById('panel-contact-info').innerHTML = contactParts.join('<br>') || '<em>No contact info yet</em>';
+
+    const notesEl = document.getElementById('panel-notes');
+    if (currentParty.notes) { notesEl.textContent = currentParty.notes; notesEl.style.display = ''; }
+    else notesEl.style.display = 'none';
+
+    renderCommitments(currentParty.commitments);
+    renderInteractions(currentParty.interactions);
+
+    document.getElementById('party-panel').classList.add('open');
+  }
+
+  function closePartyPanel(e) {
+    if (!e || e.target === document.getElementById('party-panel')) {
+      document.getElementById('party-panel').classList.remove('open');
+      if (currentJob) loadJobDetail(currentJob.id);
+    }
+  }
+
+  async function updatePartyStatus(status) {
+    await fetch('/api/parties/' + currentParty.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status }) });
+    currentParty.status = status;
+  }
+
+  function renderCommitments(commitments) {
+    const list = document.getElementById('commitments-list');
+    const open = commitments.filter(c => c.status !== 'met');
+    const met = commitments.filter(c => c.status === 'met');
+    const items = [...open, ...met];
+    if (!items.length) { list.innerHTML = '<div class="empty">No commitments tracked yet</div>'; return; }
+    list.innerHTML = items.map(c => {
+      const isOverdue = c.status === 'pending' && c.due_date && c.due_date < new Date().toISOString().split('T')[0];
+      const dueText = c.due_date ? (isOverdue ? `<span class="due-overdue">⚠ Due ${formatDate(c.due_date)}</span>` : `Due ${formatDate(c.due_date)}`) : 'No due date';
+      return `
+        <div class="commitment-item ${isOverdue ? 'overdue' : ''} ${c.status === 'met' ? 'met' : ''}">
+          <input type="checkbox" class="commitment-check" ${c.status === 'met' ? 'checked' : ''} onchange="toggleCommitment(${c.id}, this.checked)" />
+          <div class="commitment-text">
+            <div class="commitment-desc">${esc(c.description)}</div>
+            <div class="commitment-meta">${dueText}${c.status === 'met' ? ' · ✓ Met' : ''}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border:none;" onclick="deleteCommitment(${c.id})">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  function renderInteractions(interactions) {
+    const list = document.getElementById('interactions-list');
+    if (!interactions.length) { list.innerHTML = '<div class="empty">No interactions logged yet</div>'; return; }
+    list.innerHTML = interactions.map(i => `
+      <div class="interaction-item ${i.interaction_type}">
+        <div class="int-header">
+          <span class="int-type">${esc(i.interaction_type)}</span>
+          <span>${formatDate(i.interaction_date)}${i.created_by_name ? ' · ' + esc(i.created_by_name) : ''}</span>
+          <button class="btn btn-sm btn-ghost btn-delete" style="color:var(--danger);border:none;padding:0 4px;" onclick="deleteInteraction(${i.id})">✕</button>
+        </div>
+        <div class="int-summary">${esc(i.summary)}</div>
+      </div>`).join('');
+  }
+
+  async function toggleCommitment(id, checked) {
+    await fetch('/api/commitments/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: checked ? 'met' : 'pending' }) });
+    await refreshPartyPanel();
+  }
+
+  async function deleteCommitment(id) {
+    if (!confirm('Delete this commitment?')) return;
+    await fetch('/api/commitments/' + id, { method: 'DELETE' });
+    await refreshPartyPanel();
+  }
+
+  async function deleteInteraction(id) {
+    if (!confirm('Delete this interaction log?')) return;
+    await fetch('/api/interactions/' + id, { method: 'DELETE' });
+    await refreshPartyPanel();
+  }
+
+  async function refreshPartyPanel() {
+    const res = await fetch('/api/parties/' + currentParty.id);
+    currentParty = await res.json();
+    renderCommitments(currentParty.commitments);
+    renderInteractions(currentParty.interactions);
+  }
+
+  // ── Modals ────────────────────────────────────────────────────────────────
+  function openNewJobModal() { openModal('modal-new-job'); }
+
+  function openEditJobModal() {
+    document.getElementById('ej-number').value = currentJob.job_number;
+    document.getElementById('ej-customer').value = currentJob.customer_name;
+    document.getElementById('ej-address').value = currentJob.address || '';
+    document.getElementById('ej-desc').value = currentJob.description || '';
+    document.getElementById('ej-status').value = currentJob.status;
+    openModal('modal-edit-job');
+  }
+
+  async function saveEditJob() {
+    await fetch('/api/jobs/' + currentJob.id, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        job_number: document.getElementById('ej-number').value.trim(),
+        customer_name: document.getElementById('ej-customer').value.trim(),
+        address: document.getElementById('ej-address').value.trim(),
+        description: document.getElementById('ej-desc').value.trim(),
+        status: document.getElementById('ej-status').value
+      })
+    });
+    closeModal('modal-edit-job');
+    loadJobDetail(currentJob.id);
+  }
+
+  function openEditPartyModal() {
+    document.getElementById('ep-title').textContent = 'Edit ' + currentParty.party_type;
+    document.getElementById('ep-company').value = currentParty.company_name || '';
+    document.getElementById('ep-contact').value = currentParty.contact_name || '';
+    document.getElementById('ep-email').value = currentParty.contact_email || '';
+    document.getElementById('ep-phone').value = currentParty.contact_phone || '';
+    document.getElementById('ep-notes').value = currentParty.notes || '';
+    openModal('modal-edit-party');
+  }
+
+  async function saveEditParty() {
+    await fetch('/api/parties/' + currentParty.id, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        company_name: document.getElementById('ep-company').value.trim(),
+        contact_name: document.getElementById('ep-contact').value.trim(),
+        contact_email: document.getElementById('ep-email').value.trim(),
+        contact_phone: document.getElementById('ep-phone').value.trim(),
+        notes: document.getElementById('ep-notes').value.trim()
+      })
+    });
+    closeModal('modal-edit-party');
+    await refreshPartyPanel();
+    document.getElementById('panel-company').textContent = document.getElementById('ep-company').value.trim() || 'No company set';
+  }
+
+  function openAddInteractionModal() {
+    document.getElementById('ai-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('ai-summary').value = '';
+    openModal('modal-add-interaction');
+  }
+
+  async function saveInteraction() {
+    const summary = document.getElementById('ai-summary').value.trim();
+    if (!summary) return alert('Please enter a summary.');
+    await fetch('/api/interactions', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        party_id: currentParty.id,
+        job_id: currentJob.id,
+        interaction_type: document.getElementById('ai-type').value,
+        summary,
+        interaction_date: document.getElementById('ai-date').value
+      })
+    });
+    closeModal('modal-add-interaction');
+    refreshPartyPanel();
+  }
+
+  function openAddCommitmentModal() {
+    document.getElementById('ac-desc').value = '';
+    document.getElementById('ac-due').value = '';
+    openModal('modal-add-commitment');
+  }
+
+  async function saveCommitment() {
+    const description = document.getElementById('ac-desc').value.trim();
+    if (!description) return alert('Please describe the commitment.');
+    await fetch('/api/commitments', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        party_id: currentParty.id,
+        job_id: currentJob.id,
+        description,
+        due_date: document.getElementById('ac-due').value || null
+      })
+    });
+    closeModal('modal-add-commitment');
+    refreshPartyPanel();
+  }
+
+  async function createJob() {
+    const job_number = document.getElementById('nj-number').value.trim();
+    const customer_name = document.getElementById('nj-customer').value.trim();
+    if (!job_number || !customer_name) return alert('Job number and customer name are required.');
+    const res = await fetch('/api/jobs', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        job_number, customer_name,
+        address: document.getElementById('nj-address').value.trim(),
+        description: document.getElementById('nj-desc').value.trim()
+      })
+    });
+    if (!res.ok) { const e = await res.json(); return alert(e.error); }
+    const j = await res.json();
+    closeModal('modal-new-job');
+    ['nj-number','nj-customer','nj-address','nj-desc'].forEach(id => document.getElementById(id).value = '');
+    await loadJobs();
+    openJob(j.id);
+    showPage('job-detail', j.id);
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatDate(d) {
+    if (!d) return '—';
+    const date = new Date(d + (d.length === 10 ? 'T00:00:00' : ''));
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (async () => {
+    const res = await fetch('/api/auth/me');
+    const user = await res.json();
+    if (user) initApp(user);
+  })();
+</script>
+</body>
+</html>
