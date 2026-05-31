@@ -16,6 +16,7 @@
     "connect-sqlite3": "^0.9.16",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "pg": "^8.21.0",
     "uuid": "^14.0.0"
   }
 }

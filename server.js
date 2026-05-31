@@ -1,12 +1,11 @@
 const express = require('express');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const db = require('./db');
+const { query, initDb } = require('./db');
 
 const app = express();
-const PORT = 3030;
+const PORT = process.env.PORT || 3030;
 
 const PARTY_TYPES = ['Engineer', 'Abatement', 'Adjuster', 'Edison', 'Bld Dept', 'EMS'];
 
@@ -15,11 +14,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
-  secret: 'job-tracker-secret-2024',
+  secret: process.env.SESSION_SECRET || 'job-tracker-secret-2024',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production'
+  }
 }));
 
 function requireAuth(req, res, next) {
@@ -27,17 +28,20 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// ─── Auth ───────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid username or password' });
-  }
-  req.session.userId = user.id;
-  req.session.displayName = user.display_name;
-  res.json({ id: user.id, username: user.username, displayName: user.display_name });
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const result = await query('SELECT * FROM users WHERE username = $1', [username]);
+    const user = result.rows[0];
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+    req.session.userId = user.id;
+    req.session.displayName = user.display_name;
+    res.json({ id: user.id, username: user.username, displayName: user.display_name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -45,206 +49,245 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
   if (!req.session.userId) return res.json(null);
-  const user = db.prepare('SELECT id, username, display_name FROM users WHERE id = ?').get(req.session.userId);
-  res.json(user);
+  try {
+    const result = await query('SELECT id, username, display_name FROM users WHERE id = $1', [req.session.userId]);
+    res.json(result.rows[0] || null);
+  } catch (e) { res.json(null); }
 });
 
-app.post('/api/auth/register', (req, res) => {
-  const { username, password, display_name, setup_key } = req.body;
-  // Simple setup key to prevent open registration
-  if (setup_key !== 'freeman2024') return res.status(403).json({ error: 'Invalid setup key' });
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(400).json({ error: 'Username already taken' });
-  const hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare('INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)').run(username, hash, display_name || username);
-  res.json({ id: result.lastInsertRowid, username, displayName: display_name || username });
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, display_name, setup_key } = req.body;
+    if (setup_key !== (process.env.SETUP_KEY || 'freeman2024')) return res.status(403).json({ error: 'Invalid setup key' });
+    const existing = await query('SELECT id FROM users WHERE username = $1', [username]);
+    if (existing.rows.length) return res.status(400).json({ error: 'Username already taken' });
+    const hash = bcrypt.hashSync(password, 10);
+    const result = await query(
+      'INSERT INTO users (username, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id',
+      [username, hash, display_name || username]
+    );
+    res.json({ id: result.rows[0].id, username, displayName: display_name || username });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Jobs ────────────────────────────────────────────────────────────────────
+// ─── Jobs ─────────────────────────────────────────────────────────────────────
 
-app.get('/api/jobs', requireAuth, (req, res) => {
-  const jobs = db.prepare(`
-    SELECT j.*,
-      (SELECT COUNT(*) FROM commitments c WHERE c.job_id = j.id AND c.status = 'pending' AND c.due_date < date('now')) as overdue_count,
-      (SELECT COUNT(*) FROM commitments c WHERE c.job_id = j.id AND c.status = 'pending') as open_commitments
-    FROM jobs j
-    ORDER BY j.updated_at DESC
-  `).all();
-  res.json(jobs);
+app.get('/api/jobs', requireAuth, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT j.*,
+        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE THEN 1 END) as overdue_count,
+        COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as open_commitments
+      FROM jobs j
+      LEFT JOIN commitments c ON c.job_id = j.id
+      GROUP BY j.id
+      ORDER BY j.updated_at DESC
+    `);
+    res.json(result.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/jobs', requireAuth, (req, res) => {
-  const { job_number, customer_name, address, description } = req.body;
-  if (!job_number || !customer_name) return res.status(400).json({ error: 'Job number and customer name required' });
-
-  const existing = db.prepare('SELECT id FROM jobs WHERE job_number = ?').get(job_number);
-  if (existing) return res.status(400).json({ error: 'Job number already exists' });
-
-  const result = db.prepare(
-    'INSERT INTO jobs (job_number, customer_name, address, description, created_by) VALUES (?, ?, ?, ?, ?)'
-  ).run(job_number, customer_name, address || '', description || '', req.session.userId);
-
-  // Auto-create party slots for all types
-  const insertParty = db.prepare('INSERT INTO parties (job_id, party_type) VALUES (?, ?)');
-  for (const type of PARTY_TYPES) insertParty.run(result.lastInsertRowid, type);
-
-  res.json({ id: result.lastInsertRowid, job_number, customer_name });
+app.post('/api/jobs', requireAuth, async (req, res) => {
+  try {
+    const { job_number, customer_name, address, description } = req.body;
+    if (!job_number || !customer_name) return res.status(400).json({ error: 'Job number and customer name required' });
+    const existing = await query('SELECT id FROM jobs WHERE job_number = $1', [job_number]);
+    if (existing.rows.length) return res.status(400).json({ error: 'Job number already exists' });
+    const result = await query(
+      'INSERT INTO jobs (job_number, customer_name, address, description, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [job_number, customer_name, address || '', description || '', req.session.userId]
+    );
+    const jobId = result.rows[0].id;
+    for (const type of PARTY_TYPES) {
+      await query('INSERT INTO parties (job_id, party_type) VALUES ($1, $2)', [jobId, type]);
+    }
+    res.json({ id: jobId, job_number, customer_name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/jobs/:id', requireAuth, (req, res) => {
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.id);
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-
-  const parties = db.prepare(`
-    SELECT p.*,
-      (SELECT COUNT(*) FROM commitments c WHERE c.party_id = p.id AND c.status = 'pending') as open_commitments,
-      (SELECT COUNT(*) FROM commitments c WHERE c.party_id = p.id AND c.status = 'pending' AND c.due_date < date('now')) as overdue_count,
-      (SELECT interaction_date FROM interactions i WHERE i.party_id = p.id ORDER BY i.interaction_date DESC LIMIT 1) as last_contact
-    FROM parties p WHERE p.job_id = ?
-    ORDER BY p.party_type
-  `).all(job.id);
-
-  res.json({ ...job, parties });
+app.get('/api/jobs/:id', requireAuth, async (req, res) => {
+  try {
+    const jobResult = await query('SELECT * FROM jobs WHERE id = $1', [req.params.id]);
+    if (!jobResult.rows.length) return res.status(404).json({ error: 'Job not found' });
+    const job = jobResult.rows[0];
+    const parties = await query(`
+      SELECT p.*,
+        COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as open_commitments,
+        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE THEN 1 END) as overdue_count,
+        MAX(i.interaction_date) as last_contact
+      FROM parties p
+      LEFT JOIN commitments c ON c.party_id = p.id
+      LEFT JOIN interactions i ON i.party_id = p.id
+      WHERE p.job_id = $1
+      GROUP BY p.id
+      ORDER BY p.party_type
+    `, [job.id]);
+    res.json({ ...job, parties: parties.rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.patch('/api/jobs/:id', requireAuth, (req, res) => {
-  const { status, customer_name, address, description, job_number } = req.body;
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.id);
-  if (!job) return res.status(404).json({ error: 'Not found' });
-  db.prepare(`UPDATE jobs SET
-    status = COALESCE(?, status),
-    customer_name = COALESCE(?, customer_name),
-    address = COALESCE(?, address),
-    description = COALESCE(?, description),
-    job_number = COALESCE(?, job_number),
-    updated_at = datetime('now')
-    WHERE id = ?`).run(status, customer_name, address, description, job_number, req.params.id);
-  res.json({ ok: true });
+app.patch('/api/jobs/:id', requireAuth, async (req, res) => {
+  try {
+    const { status, customer_name, address, description, job_number } = req.body;
+    await query(`
+      UPDATE jobs SET
+        status = COALESCE($1, status),
+        customer_name = COALESCE($2, customer_name),
+        address = COALESCE($3, address),
+        description = COALESCE($4, description),
+        job_number = COALESCE($5, job_number),
+        updated_at = NOW()
+      WHERE id = $6
+    `, [status, customer_name, address, description, job_number, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Parties ─────────────────────────────────────────────────────────────────
+// ─── Parties ──────────────────────────────────────────────────────────────────
 
-app.get('/api/parties/:id', requireAuth, (req, res) => {
-  const party = db.prepare('SELECT * FROM parties WHERE id = ?').get(req.params.id);
-  if (!party) return res.status(404).json({ error: 'Not found' });
-
-  const interactions = db.prepare(`
-    SELECT i.*, u.display_name as created_by_name
-    FROM interactions i
-    LEFT JOIN users u ON u.id = i.created_by
-    WHERE i.party_id = ?
-    ORDER BY i.interaction_date DESC
-  `).all(party.id);
-
-  const commitments = db.prepare(`
-    SELECT c.*, u.display_name as created_by_name
-    FROM commitments c
-    LEFT JOIN users u ON u.id = c.created_by
-    WHERE c.party_id = ?
-    ORDER BY c.status ASC, c.due_date ASC
-  `).all(party.id);
-
-  res.json({ ...party, interactions, commitments });
+app.get('/api/parties/:id', requireAuth, async (req, res) => {
+  try {
+    const partyResult = await query('SELECT * FROM parties WHERE id = $1', [req.params.id]);
+    if (!partyResult.rows.length) return res.status(404).json({ error: 'Not found' });
+    const party = partyResult.rows[0];
+    const interactions = await query(`
+      SELECT i.*, u.display_name as created_by_name
+      FROM interactions i
+      LEFT JOIN users u ON u.id = i.created_by
+      WHERE i.party_id = $1
+      ORDER BY i.interaction_date DESC
+    `, [party.id]);
+    const commitments = await query(`
+      SELECT c.*, u.display_name as created_by_name
+      FROM commitments c
+      LEFT JOIN users u ON u.id = c.created_by
+      WHERE c.party_id = $1
+      ORDER BY c.status ASC, c.due_date ASC
+    `, [party.id]);
+    res.json({ ...party, interactions: interactions.rows, commitments: commitments.rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.patch('/api/parties/:id', requireAuth, (req, res) => {
-  const { company_name, contact_name, contact_email, contact_phone, status, notes } = req.body;
-  db.prepare(`UPDATE parties SET
-    company_name = COALESCE(?, company_name),
-    contact_name = COALESCE(?, contact_name),
-    contact_email = COALESCE(?, contact_email),
-    contact_phone = COALESCE(?, contact_phone),
-    status = COALESCE(?, status),
-    notes = COALESCE(?, notes)
-    WHERE id = ?`).run(company_name, contact_name, contact_email, contact_phone, status, notes, req.params.id);
-
-  // Update job's updated_at
-  const party = db.prepare('SELECT job_id FROM parties WHERE id = ?').get(req.params.id);
-  if (party) db.prepare("UPDATE jobs SET updated_at = datetime('now') WHERE id = ?").run(party.job_id);
-
-  res.json({ ok: true });
+app.patch('/api/parties/:id', requireAuth, async (req, res) => {
+  try {
+    const { company_name, contact_name, contact_email, contact_phone, status, notes } = req.body;
+    await query(`
+      UPDATE parties SET
+        company_name = COALESCE($1, company_name),
+        contact_name = COALESCE($2, contact_name),
+        contact_email = COALESCE($3, contact_email),
+        contact_phone = COALESCE($4, contact_phone),
+        status = COALESCE($5, status),
+        notes = COALESCE($6, notes)
+      WHERE id = $7
+    `, [company_name, contact_name, contact_email, contact_phone, status, notes, req.params.id]);
+    const party = await query('SELECT job_id FROM parties WHERE id = $1', [req.params.id]);
+    if (party.rows.length) await query('UPDATE jobs SET updated_at = NOW() WHERE id = $1', [party.rows[0].job_id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Interactions ─────────────────────────────────────────────────────────────
 
-app.post('/api/interactions', requireAuth, (req, res) => {
-  const { party_id, job_id, interaction_type, summary, interaction_date } = req.body;
-  if (!party_id || !job_id || !summary) return res.status(400).json({ error: 'Missing required fields' });
-  const result = db.prepare(
-    'INSERT INTO interactions (party_id, job_id, interaction_type, summary, interaction_date, created_by) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(party_id, job_id, interaction_type || 'note', summary, interaction_date || new Date().toISOString().split('T')[0], req.session.userId);
-  db.prepare("UPDATE jobs SET updated_at = datetime('now') WHERE id = ?").run(job_id);
-  res.json({ id: result.lastInsertRowid });
+app.post('/api/interactions', requireAuth, async (req, res) => {
+  try {
+    const { party_id, job_id, interaction_type, summary, interaction_date } = req.body;
+    if (!party_id || !job_id || !summary) return res.status(400).json({ error: 'Missing required fields' });
+    const result = await query(
+      'INSERT INTO interactions (party_id, job_id, interaction_type, summary, interaction_date, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [party_id, job_id, interaction_type || 'note', summary, interaction_date || new Date().toISOString().split('T')[0], req.session.userId]
+    );
+    await query('UPDATE jobs SET updated_at = NOW() WHERE id = $1', [job_id]);
+    res.json({ id: result.rows[0].id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/interactions/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM interactions WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
+app.delete('/api/interactions/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM interactions WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Commitments ──────────────────────────────────────────────────────────────
 
-app.post('/api/commitments', requireAuth, (req, res) => {
-  const { party_id, job_id, interaction_id, description, due_date } = req.body;
-  if (!party_id || !job_id || !description) return res.status(400).json({ error: 'Missing required fields' });
-  const result = db.prepare(
-    'INSERT INTO commitments (party_id, job_id, interaction_id, description, due_date, created_by) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(party_id, job_id, interaction_id || null, description, due_date || null, req.session.userId);
-  db.prepare("UPDATE jobs SET updated_at = datetime('now') WHERE id = ?").run(job_id);
-  res.json({ id: result.lastInsertRowid });
+app.post('/api/commitments', requireAuth, async (req, res) => {
+  try {
+    const { party_id, job_id, interaction_id, description, due_date } = req.body;
+    if (!party_id || !job_id || !description) return res.status(400).json({ error: 'Missing required fields' });
+    const result = await query(
+      'INSERT INTO commitments (party_id, job_id, interaction_id, description, due_date, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [party_id, job_id, interaction_id || null, description, due_date || null, req.session.userId]
+    );
+    await query('UPDATE jobs SET updated_at = NOW() WHERE id = $1', [job_id]);
+    res.json({ id: result.rows[0].id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.patch('/api/commitments/:id', requireAuth, (req, res) => {
-  const { status, due_date, description } = req.body;
-  const resolved_at = status === 'met' ? new Date().toISOString() : null;
-  db.prepare(`UPDATE commitments SET
-    status = COALESCE(?, status),
-    due_date = COALESCE(?, due_date),
-    description = COALESCE(?, description),
-    resolved_at = CASE WHEN ? = 'met' THEN datetime('now') ELSE resolved_at END
-    WHERE id = ?`).run(status, due_date, description, status, req.params.id);
-  res.json({ ok: true });
+app.patch('/api/commitments/:id', requireAuth, async (req, res) => {
+  try {
+    const { status, due_date, description } = req.body;
+    await query(`
+      UPDATE commitments SET
+        status = COALESCE($1, status),
+        due_date = COALESCE($2, due_date),
+        description = COALESCE($3, description),
+        resolved_at = CASE WHEN $1 = 'met' THEN NOW() ELSE resolved_at END
+      WHERE id = $4
+    `, [status, due_date, description, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/commitments/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM commitments WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
+app.delete('/api/commitments/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM commitments WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Dashboard summary ────────────────────────────────────────────────────────
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
-app.get('/api/dashboard', requireAuth, (req, res) => {
-  const stats = db.prepare(`SELECT
-    COUNT(*) as total_jobs,
-    SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as open_jobs,
-    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) as closed_jobs
-    FROM jobs`).get();
-
-  const overdue = db.prepare(`
-    SELECT c.*, p.party_type, j.job_number, j.customer_name, j.id as job_id
-    FROM commitments c
-    JOIN parties p ON p.id = c.party_id
-    JOIN jobs j ON j.id = c.job_id
-    WHERE c.status = 'pending' AND c.due_date < date('now')
-    ORDER BY c.due_date ASC
-    LIMIT 20
-  `).all();
-
-  const dueSoon = db.prepare(`
-    SELECT c.*, p.party_type, j.job_number, j.customer_name, j.id as job_id
-    FROM commitments c
-    JOIN parties p ON p.id = c.party_id
-    JOIN jobs j ON j.id = c.job_id
-    WHERE c.status = 'pending' AND c.due_date BETWEEN date('now') AND date('now', '+7 days')
-    ORDER BY c.due_date ASC
-    LIMIT 20
-  `).all();
-
-  res.json({ stats, overdue, dueSoon });
+app.get('/api/dashboard', requireAuth, async (req, res) => {
+  try {
+    const stats = await query(`
+      SELECT
+        COUNT(*) as total_jobs,
+        COUNT(CASE WHEN status = 'open' THEN 1 END) as open_jobs,
+        COUNT(CASE WHEN status = 'closed' THEN 1 END) as closed_jobs
+      FROM jobs
+    `);
+    const overdue = await query(`
+      SELECT c.*, p.party_type, j.job_number, j.customer_name, j.id as job_id
+      FROM commitments c
+      JOIN parties p ON p.id = c.party_id
+      JOIN jobs j ON j.id = c.job_id
+      WHERE c.status = 'pending' AND c.due_date < CURRENT_DATE::text
+      ORDER BY c.due_date ASC
+      LIMIT 20
+    `);
+    const dueSoon = await query(`
+      SELECT c.*, p.party_type, j.job_number, j.customer_name, j.id as job_id
+      FROM commitments c
+      JOIN parties p ON p.id = c.party_id
+      JOIN jobs j ON j.id = c.job_id
+      WHERE c.status = 'pending'
+        AND c.due_date >= CURRENT_DATE::text
+        AND c.due_date <= (CURRENT_DATE + INTERVAL '7 days')::date::text
+      ORDER BY c.due_date ASC
+      LIMIT 20
+    `);
+    res.json({ stats: stats.rows[0], overdue: overdue.rows, dueSoon: dueSoon.rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.listen(PORT, () => {
-  console.log(`Job Tracker running at http://localhost:${PORT}`);
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+initDb().then(() => {
+  app.listen(PORT, () => console.log(`Job Tracker running on port ${PORT}`));
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
