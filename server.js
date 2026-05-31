@@ -82,7 +82,7 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
   try {
     const result = await query(`
       SELECT j.*,
-        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE THEN 1 END) as overdue_count,
+        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE::text THEN 1 END) as overdue_count,
         COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as open_commitments
       FROM jobs j
       LEFT JOIN commitments c ON c.job_id = j.id
@@ -119,7 +119,7 @@ app.get('/api/jobs/:id', requireAuth, async (req, res) => {
     const parties = await query(`
       SELECT p.*,
         COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as open_commitments,
-        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE THEN 1 END) as overdue_count,
+        COUNT(CASE WHEN c.status = 'pending' AND c.due_date < CURRENT_DATE::text THEN 1 END) as overdue_count,
         MAX(i.interaction_date) as last_contact
       FROM parties p
       LEFT JOIN commitments c ON c.party_id = p.id
