@@ -524,7 +524,11 @@
   // ── Jobs ──────────────────────────────────────────────────────────────────
   async function loadJobs() {
     const res = await fetch('/api/jobs');
-    if (!res.ok) { renderJobs([]); return; }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      document.getElementById('jobs-tbody').innerHTML = `<tr><td colspan="7" class="empty">Error ${res.status}: ${err.error || 'Unknown error'}</td></tr>`;
+      return;
+    }
     const data = await res.json();
     allJobs = Array.isArray(data) ? data : [];
     renderJobs(allJobs);
