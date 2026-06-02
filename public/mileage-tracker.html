@@ -985,11 +985,13 @@ async function fetchMiles() {
 async function lookupGoogle(from, to) {
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(from)}&destinations=${encodeURIComponent(to)}&units=imperial&key=${userSettings.maps_key}`;
   const d = await (await fetch(url)).json();
-  const text = d.rows?.[0]?.elements?.[0]?.distance?.text;
-  if (!text) throw new Error('No result');
-  const miles = parseFloat(text.replace(/[^0-9.]/g, ''));
+  const el = d.rows?.[0]?.elements?.[0];
+  if (!el?.distance?.text) throw new Error('No result');
+  const miles = parseFloat(el.distance.text.replace(/[^0-9.]/g, ''));
+  const mins = el.duration?.value ? Math.round(el.duration.value / 60) : null;
   document.getElementById('trip-miles').value = miles.toFixed(1);
-  document.getElementById('miles-hint').textContent = `✓ Google Maps: ${text}`;
+  if (mins !== null) document.getElementById('trip-drive-time').value = mins;
+  document.getElementById('miles-hint').textContent = `✓ Google Maps: ${el.distance.text}${mins !== null ? ` · ${mins} min` : ''}`;
 }
 
 async function lookupOSRM(from, to) {
@@ -1003,8 +1005,10 @@ async function lookupOSRM(from, to) {
   const rd = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${o.lon},${o.lat};${dest.lon},${dest.lat}?overview=false`)).json();
   if (!rd.routes?.[0]?.distance) throw new Error('No route');
   const miles = (rd.routes[0].distance / 1609.344).toFixed(1);
+  const mins = Math.round(rd.routes[0].duration / 60);
   document.getElementById('trip-miles').value = miles;
-  document.getElementById('miles-hint').textContent = `✓ OpenStreetMap: ${miles} mi`;
+  document.getElementById('trip-drive-time').value = mins;
+  document.getElementById('miles-hint').textContent = `✓ OpenStreetMap: ${miles} mi · ${mins} min`;
 }
 
 // ══════════════════════════════════════════════════
