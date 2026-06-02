@@ -1365,6 +1365,19 @@ function startDictation(fieldId) {
 document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+// ── Auto-lookup miles when both addresses are filled ──
+let autoMilesTimer;
+function scheduleAutoMiles() {
+  clearTimeout(autoMilesTimer);
+  const from = document.getElementById('trip-from').value.trim();
+  const to = document.getElementById('trip-to').value.trim();
+  if (from && to) {
+    autoMilesTimer = setTimeout(fetchMiles, 800);
+  }
+}
+document.getElementById('trip-from').addEventListener('blur', scheduleAutoMiles);
+document.getElementById('trip-to').addEventListener('blur', scheduleAutoMiles);
+
 // ── Auto-check session on load ──
 (async () => {
   try {
