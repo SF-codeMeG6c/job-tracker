@@ -316,7 +316,7 @@
             </select>
           </div>
           <div class="form-group" style="flex:2">
-            <label>Purpose / Description</label>
+            <label>Purpose</label>
             <div style="display:flex;gap:5px">
               <input type="text" id="trip-purpose" placeholder="Type or pick above" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-purpose')" id="mic-trip-purpose" title="Speak purpose">🎤</button>
@@ -326,15 +326,19 @@
             <label>Lead / Job #</label>
             <input type="text" id="trip-lead" placeholder="Optional">
           </div>
-          <div class="form-group" style="flex:0 0 155px">
+          <div class="form-group" style="flex:0 0 120px">
             <label>Miles</label>
-            <div class="miles-wrap">
-              <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1">
-              <button class="btn btn-map btn-sm" id="fetch-btn" onclick="fetchMiles()" title="Auto-lookup miles">
-                <span id="fetch-icon">📍</span> Lookup
-              </button>
-            </div>
+            <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1">
             <span class="hint" id="miles-hint"></span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Description</label>
+            <div style="display:flex;gap:5px">
+              <input type="text" id="trip-description" placeholder="Additional notes or details" style="flex:1">
+              <button class="btn-mic" onclick="startDictation('trip-description')" id="mic-trip-description" title="Speak description">🎤</button>
+            </div>
           </div>
         </div>
         <div class="form-row" style="margin-bottom:0;align-items:center">
@@ -897,10 +901,6 @@ async function fetchMiles() {
   const to = document.getElementById('trip-to').value.trim();
   if (!from || !to) { toast('Enter both From and To addresses first.'); return; }
 
-  const btn = document.getElementById('fetch-btn');
-  const icon = document.getElementById('fetch-icon');
-  btn.disabled = true;
-  icon.innerHTML = '<span class="spinner"></span>';
   document.getElementById('miles-hint').textContent = 'Looking up...';
 
   try {
@@ -912,10 +912,7 @@ async function fetchMiles() {
   } catch (e) {
     try { await lookupOSRM(from, to); }
     catch { document.getElementById('miles-hint').textContent = 'Lookup failed — enter miles manually'; }
-  } finally {
-    btn.disabled = false;
-    icon.textContent = '📍';
-  }
+  } finally {}
 }
 
 async function lookupGoogle(from, to) {
@@ -988,6 +985,7 @@ async function addTrip() {
   const to_addr = document.getElementById('trip-to').value.trim();
   const job_name = document.getElementById('trip-job-name').value.trim();
   const purpose = document.getElementById('trip-purpose').value.trim();
+  const description = document.getElementById('trip-description').value.trim();
   const lead_number = document.getElementById('trip-lead').value.trim();
   const miles = parseFloat(document.getElementById('trip-miles').value);
   const addReturn = document.getElementById('trip-return').checked;
@@ -996,8 +994,8 @@ async function addTrip() {
     toast('Please fill in Date, From, To, and Miles.'); return;
   }
 
-  const batch = [{ date, from_addr, to_addr, job_name, purpose, lead_number, miles }];
-  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), lead_number, miles });
+  const batch = [{ date, from_addr, to_addr, job_name, purpose, description, lead_number, miles }];
+  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, lead_number, miles });
 
   await api('POST', '/api/mileage/trips', batch);
   clearTripForm();
@@ -1017,6 +1015,7 @@ function clearTripForm() {
   document.getElementById('trip-to').value = '';
   document.getElementById('trip-job-name').value = '';
   document.getElementById('trip-purpose').value = '';
+  document.getElementById('trip-description').value = '';
   document.getElementById('trip-lead').value = '';
   document.getElementById('trip-miles').value = '';
   document.getElementById('miles-hint').textContent = '';

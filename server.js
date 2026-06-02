@@ -341,8 +341,8 @@ app.post('/api/mileage/trips', requireAuth, async (req, res) => {
     const inserted = [];
     for (const t of trips) {
       const r = await query(
-        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,job_name,purpose,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-        [req.session.userId, t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.lead_number||'', parseFloat(t.miles)]
+        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,job_name,purpose,description,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+        [req.session.userId, t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.description||'', t.lead_number||'', parseFloat(t.miles)]
       );
       inserted.push(r.rows[0]);
     }

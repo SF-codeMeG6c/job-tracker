@@ -97,12 +97,14 @@ async function initDb() {
       to_addr TEXT NOT NULL,
       job_name TEXT DEFAULT '',
       purpose TEXT DEFAULT '',
+      description TEXT DEFAULT '',
       lead_number TEXT DEFAULT '',
       miles NUMERIC NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
   await query(`ALTER TABLE mileage_trips ADD COLUMN IF NOT EXISTS job_name TEXT DEFAULT ''`);
+  await query(`ALTER TABLE mileage_trips ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
   await query(`
     CREATE TABLE IF NOT EXISTS mileage_expenses (
       id SERIAL PRIMARY KEY,
