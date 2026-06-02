@@ -120,9 +120,11 @@ async function initDb() {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       address TEXT NOT NULL,
+      purpose TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE mileage_sites ADD COLUMN IF NOT EXISTS purpose TEXT DEFAULT ''`);
   console.log('Database initialized');
 }
 

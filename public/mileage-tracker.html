@@ -432,11 +432,15 @@
           <div class="form-row">
             <div class="form-group" style="flex:1;min-width:130px">
               <label>Site Name</label>
-              <input type="text" id="new-site-name" placeholder="e.g. Office, Conboy House">
+              <input type="text" id="new-site-name" placeholder="e.g. Conboy House">
             </div>
             <div class="form-group" style="flex:3">
               <label>Address</label>
               <input type="text" id="new-site-addr" placeholder="Full street address">
+            </div>
+            <div class="form-group" style="flex:2">
+              <label>Job / Purpose (optional)</label>
+              <input type="text" id="new-site-purpose" placeholder="e.g. Conboy site visit for CES">
             </div>
             <div style="display:flex;align-items:flex-end">
               <button class="btn btn-primary" onclick="addSite()">+ Add Site</button>
@@ -644,7 +648,7 @@ function renderSites() {
     <div class="site-item">
       <div class="site-item-info">
         <div class="site-name">📌 ${esc(s.name)}</div>
-        <div class="site-addr">${esc(s.address)}</div>
+        <div class="site-addr">${esc(s.address)}${s.purpose ? ` — <em>${esc(s.purpose)}</em>` : ''}</div>
       </div>
       <button class="btn btn-danger btn-sm" onclick="deleteSite(${s.id})" title="Delete site">🗑</button>
     </div>
@@ -653,27 +657,35 @@ function renderSites() {
 
 function updateSiteDropdowns() {
   const options = '<option value="">— pick saved site —</option>' +
-    sites.map(s => `<option value="${esc(s.address)}">${esc(s.name)}</option>`).join('');
+    sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
   document.getElementById('pick-from').innerHTML = options;
   document.getElementById('pick-to').innerHTML = options;
 }
 
 function pickSite(field) {
   const select = document.getElementById('pick-' + field);
-  const addr = select.value;
-  if (addr) {
-    document.getElementById('trip-' + field).value = addr;
-    select.value = '';
+  const siteId = parseInt(select.value);
+  if (!siteId) return;
+  const site = sites.find(s => s.id === siteId);
+  if (site) {
+    document.getElementById('trip-' + field).value = site.address;
+    // Fill purpose if it has one and purpose field is empty
+    if (site.purpose && !document.getElementById('trip-purpose').value) {
+      document.getElementById('trip-purpose').value = site.purpose;
+    }
   }
+  select.value = '';
 }
 
 async function addSite() {
   const name = document.getElementById('new-site-name').value.trim();
   const address = document.getElementById('new-site-addr').value.trim();
+  const purpose = document.getElementById('new-site-purpose').value.trim();
   if (!name || !address) { toast('Enter both a site name and address.'); return; }
-  const s = await api('POST', '/api/mileage/sites', { name, address });
+  const s = await api('POST', '/api/mileage/sites', { name, address, purpose });
   document.getElementById('new-site-name').value = '';
   document.getElementById('new-site-addr').value = '';
+  document.getElementById('new-site-purpose').value = '';
   sites.push(s);
   sites.sort((a, b) => a.name.localeCompare(b.name));
   renderSites();

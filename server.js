@@ -396,11 +396,11 @@ app.get('/api/mileage/sites', requireAuth, async (req, res) => {
 
 app.post('/api/mileage/sites', requireAuth, async (req, res) => {
   try {
-    const { name, address } = req.body;
+    const { name, address, purpose } = req.body;
     if (!name || !address) return res.status(400).json({ error: 'Name and address required' });
     const r = await query(
-      'INSERT INTO mileage_sites (user_id,name,address) VALUES ($1,$2,$3) RETURNING *',
-      [req.session.userId, name.trim(), address.trim()]
+      'INSERT INTO mileage_sites (user_id,name,address,purpose) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.session.userId, name.trim(), address.trim(), (purpose || '').trim()]
     );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
