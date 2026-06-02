@@ -572,6 +572,57 @@
   </main>
 </div>
 
+<!-- Edit Trip modal -->
+<div class="modal-overlay" id="edit-trip-modal">
+  <div class="modal" style="max-width:700px">
+    <button class="modal-close" onclick="closeEditModal()">&times;</button>
+    <h2>✏️ Edit Trip</h2>
+    <input type="hidden" id="edit-trip-id">
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 135px">
+        <label>Date</label>
+        <input type="date" id="edit-date">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>From Address</label>
+        <input type="text" id="edit-from">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>To Address</label>
+        <input type="text" id="edit-to">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Job Name</label>
+        <input type="text" id="edit-job-name">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Purpose</label>
+        <input type="text" id="edit-purpose">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px">
+        <label>Lead / Job #</label>
+        <input type="text" id="edit-lead">
+      </div>
+      <div class="form-group" style="flex:0 0 100px">
+        <label>Miles</label>
+        <input type="number" id="edit-miles" min="0" step="0.1">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:0">
+      <div class="form-group" style="flex:1">
+        <label>Description</label>
+        <input type="text" id="edit-description">
+      </div>
+    </div>
+    <div class="btn-group" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="saveEditTrip()">✓ Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Receipt modal -->
 <div class="modal-overlay" id="receipt-modal">
   <div class="modal">
@@ -970,7 +1021,10 @@ function renderTrips() {
       <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose||'')}</td>
       <td>${t.lead_number ? `<span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700">${esc(t.lead_number)}</span>` : ''}</td>
       <td style="text-align:right;font-weight:600">${parseFloat(t.miles).toFixed(1)}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">🗑</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="openEditTrip(${t.id})" style="margin-right:4px">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">🗑</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -1008,6 +1062,49 @@ async function deleteTrip(id) {
   await api('DELETE', '/api/mileage/trips/' + id);
   await loadTrips();
 }
+
+function openEditTrip(id) {
+  const t = trips.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById('edit-trip-id').value = t.id;
+  document.getElementById('edit-date').value = t.date;
+  document.getElementById('edit-from').value = t.from_addr;
+  document.getElementById('edit-to').value = t.to_addr;
+  document.getElementById('edit-job-name').value = t.job_name || '';
+  document.getElementById('edit-purpose').value = t.purpose || '';
+  document.getElementById('edit-description').value = t.description || '';
+  document.getElementById('edit-lead').value = t.lead_number || '';
+  document.getElementById('edit-miles').value = parseFloat(t.miles).toFixed(1);
+  document.getElementById('edit-trip-modal').classList.add('open');
+}
+
+async function saveEditTrip() {
+  const id = document.getElementById('edit-trip-id').value;
+  const body = {
+    date: document.getElementById('edit-date').value,
+    from_addr: document.getElementById('edit-from').value.trim(),
+    to_addr: document.getElementById('edit-to').value.trim(),
+    job_name: document.getElementById('edit-job-name').value.trim(),
+    purpose: document.getElementById('edit-purpose').value.trim(),
+    description: document.getElementById('edit-description').value.trim(),
+    lead_number: document.getElementById('edit-lead').value.trim(),
+    miles: parseFloat(document.getElementById('edit-miles').value),
+  };
+  if (!body.date || !body.from_addr || !body.to_addr || isNaN(body.miles)) {
+    toast('Date, From, To and Miles are required.'); return;
+  }
+  await api('PATCH', '/api/mileage/trips/' + id, body);
+  closeEditModal();
+  await loadTrips();
+  toast('Trip updated!');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-trip-modal').classList.remove('open');
+}
+document.getElementById('edit-trip-modal').addEventListener('click', e => {
+  if (e.target.id === 'edit-trip-modal') closeEditModal();
+});
 
 function clearTripForm() {
   document.getElementById('trip-date').value = new Date().toISOString().slice(0, 10);

@@ -350,6 +350,18 @@ app.post('/api/mileage/trips', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.patch('/api/mileage/trips/:id', requireAuth, async (req, res) => {
+  try {
+    const { date, from_addr, to_addr, job_name, purpose, description, lead_number, miles } = req.body;
+    const r = await query(
+      `UPDATE mileage_trips SET date=$1,from_addr=$2,to_addr=$3,job_name=$4,purpose=$5,description=$6,lead_number=$7,miles=$8
+       WHERE id=$9 AND user_id=$10 RETURNING *`,
+      [date, from_addr, to_addr, job_name||'', purpose||'', description||'', lead_number||'', parseFloat(miles), req.params.id, req.session.userId]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/mileage/trips/:id', requireAuth, async (req, res) => {
   try {
     await query('DELETE FROM mileage_trips WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
