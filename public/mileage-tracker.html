@@ -293,10 +293,20 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group" style="flex:3">
-            <label>Purpose / Description</label>
+          <div class="form-group" style="flex:2">
+            <label>Job Name</label>
             <div style="display:flex;gap:5px">
-              <input type="text" id="trip-purpose" placeholder="e.g. Conboy site visit for CES" style="flex:1">
+              <input type="text" id="trip-job-name" placeholder="e.g. Conboy House" style="flex:1">
+              <button class="btn-mic" onclick="startDictation('trip-job-name')" id="mic-trip-job-name" title="Speak job name">🎤</button>
+            </div>
+          </div>
+          <div class="form-group" style="flex:3">
+            <label>Purpose</label>
+            <div style="display:flex;gap:5px">
+              <select id="purpose-pick" onchange="pickPurpose()" style="flex:0 0 auto;max-width:160px;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+                <option value="">— saved —</option>
+              </select>
+              <input type="text" id="trip-purpose" placeholder="e.g. Site visit" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-purpose')" id="mic-trip-purpose" title="Speak purpose">🎤</button>
             </div>
           </div>
@@ -337,7 +347,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Date</th><th>From</th><th>To</th><th>Purpose</th><th>Lead #</th>
+              <th>Date</th><th>From</th><th>To</th><th>Job Name</th><th>Purpose</th><th>Lead #</th>
               <th style="text-align:right">Miles</th><th></th>
             </tr></thead>
             <tbody id="trips-tbody"></tbody>
@@ -439,14 +449,32 @@
               <input type="text" id="new-site-addr" placeholder="Full street address">
             </div>
             <div class="form-group" style="flex:2">
-              <label>Job / Purpose (optional)</label>
-              <input type="text" id="new-site-purpose" placeholder="e.g. Conboy site visit for CES">
+              <label>Job Name (optional)</label>
+              <input type="text" id="new-site-job-name" placeholder="e.g. Conboy CES Job">
             </div>
             <div style="display:flex;align-items:flex-end">
               <button class="btn btn-primary" onclick="addSite()">+ Add Site</button>
             </div>
           </div>
           <div class="site-list" id="sites-list"></div>
+        </div>
+      </div>
+
+      <!-- Saved Purposes -->
+      <div class="card">
+        <div class="settings-group" style="margin-bottom:0">
+          <h3>🗂 Saved Purposes</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Save common trip purposes to pick from a dropdown on the trip form.</p>
+          <div class="form-row">
+            <div class="form-group" style="flex:3">
+              <label>Purpose Text</label>
+              <input type="text" id="new-purpose-text" placeholder="e.g. Site visit, Client meeting, Material pickup">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn btn-primary" onclick="addPurpose()">+ Add Purpose</button>
+            </div>
+          </div>
+          <div class="site-list" id="purposes-list"></div>
         </div>
       </div>
 
@@ -529,6 +557,7 @@
 let currentUser = null;
 let userSettings = { rate: 0.70, home_address: '', company: '', dept: '', maps_key: '' };
 let sites = [];
+let purposes = [];
 let trips = [];
 let expenses = [];
 
@@ -597,7 +626,7 @@ async function startApp() {
   document.getElementById('trips-filter').value = thisMonth;
   document.getElementById('exp-filter').value = thisMonth;
 
-  await Promise.all([loadSettings(), loadSites()]);
+  await Promise.all([loadSettings(), loadSites(), loadPurposes()]);
   await Promise.all([loadTrips(), loadExpenses()]);
 }
 
@@ -647,8 +676,8 @@ function renderSites() {
   list.innerHTML = sites.map(s => `
     <div class="site-item">
       <div class="site-item-info">
-        <div class="site-name">📌 ${esc(s.name)}</div>
-        <div class="site-addr">${esc(s.address)}${s.purpose ? ` — <em>${esc(s.purpose)}</em>` : ''}</div>
+        <div class="site-name">📌 ${esc(s.name)}${s.job_name ? ` <span style="color:var(--text-muted);font-weight:400;font-size:12px">— ${esc(s.job_name)}</span>` : ''}</div>
+        <div class="site-addr">${esc(s.address)}</div>
       </div>
       <button class="btn btn-danger btn-sm" onclick="deleteSite(${s.id})" title="Delete site">🗑</button>
     </div>
@@ -669,23 +698,30 @@ function pickSite(field) {
   const site = sites.find(s => s.id === siteId);
   if (site) {
     document.getElementById('trip-' + field).value = site.address;
-    // Fill purpose if it has one and purpose field is empty
-    if (site.purpose && !document.getElementById('trip-purpose').value) {
-      document.getElementById('trip-purpose').value = site.purpose;
+    if (site.job_name && !document.getElementById('trip-job-name').value) {
+      document.getElementById('trip-job-name').value = site.job_name;
     }
   }
   select.value = '';
 }
 
+function pickPurpose() {
+  const val = document.getElementById('purpose-pick').value;
+  if (val) {
+    document.getElementById('trip-purpose').value = val;
+    document.getElementById('purpose-pick').value = '';
+  }
+}
+
 async function addSite() {
   const name = document.getElementById('new-site-name').value.trim();
   const address = document.getElementById('new-site-addr').value.trim();
-  const purpose = document.getElementById('new-site-purpose').value.trim();
+  const job_name = document.getElementById('new-site-job-name').value.trim();
   if (!name || !address) { toast('Enter both a site name and address.'); return; }
-  const s = await api('POST', '/api/mileage/sites', { name, address, purpose });
+  const s = await api('POST', '/api/mileage/sites', { name, address, job_name });
   document.getElementById('new-site-name').value = '';
   document.getElementById('new-site-addr').value = '';
-  document.getElementById('new-site-purpose').value = '';
+  document.getElementById('new-site-job-name').value = '';
   sites.push(s);
   sites.sort((a, b) => a.name.localeCompare(b.name));
   renderSites();
@@ -699,6 +735,57 @@ async function deleteSite(id) {
   sites = sites.filter(s => s.id !== id);
   renderSites();
   updateSiteDropdowns();
+}
+
+// ── Saved Purposes ──────────────────────────────
+async function loadPurposes() {
+  purposes = await api('GET', '/api/mileage/purposes');
+  renderPurposes();
+  updatePurposeDropdown();
+}
+
+function renderPurposes() {
+  const list = document.getElementById('purposes-list');
+  if (!list) return;
+  if (!purposes.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;font-style:italic;padding:8px 0">No saved purposes yet. Add common ones like "Site visit", "Client meeting", etc.</div>';
+    return;
+  }
+  list.innerHTML = purposes.map(p => `
+    <div class="site-item">
+      <div class="site-item-info">
+        <div class="site-name">🗂 ${esc(p.purpose_text)}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deletePurpose(${p.id})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function updatePurposeDropdown() {
+  const sel = document.getElementById('purpose-pick');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— saved —</option>' +
+    purposes.map(p => `<option value="${esc(p.purpose_text)}">${esc(p.purpose_text)}</option>`).join('');
+}
+
+async function addPurpose() {
+  const text = document.getElementById('new-purpose-text').value.trim();
+  if (!text) { toast('Enter a purpose first.'); return; }
+  const p = await api('POST', '/api/mileage/purposes', { purpose_text: text });
+  document.getElementById('new-purpose-text').value = '';
+  purposes.push(p);
+  purposes.sort((a, b) => a.purpose_text.localeCompare(b.purpose_text));
+  renderPurposes();
+  updatePurposeDropdown();
+  toast('Purpose saved!');
+}
+
+async function deletePurpose(id) {
+  if (!confirm('Remove this saved purpose?')) return;
+  await api('DELETE', '/api/mileage/purposes/' + id);
+  purposes = purposes.filter(p => p.id !== id);
+  renderPurposes();
+  updatePurposeDropdown();
 }
 
 // ══════════════════════════════════════════════════
@@ -781,7 +868,8 @@ function renderTrips() {
       <td>${fmtDate(t.date)}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.from_addr)}">${esc(t.from_addr)}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.to_addr)}">${esc(t.to_addr)}</td>
-      <td style="max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose)}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.job_name)}">${esc(t.job_name||'')}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose||'')}</td>
       <td>${t.lead_number ? `<span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700">${esc(t.lead_number)}</span>` : ''}</td>
       <td style="text-align:right;font-weight:600">${parseFloat(t.miles).toFixed(1)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">🗑</button></td>
@@ -797,17 +885,18 @@ async function addTrip() {
   const date = document.getElementById('trip-date').value;
   const from_addr = document.getElementById('trip-from').value.trim();
   const to_addr = document.getElementById('trip-to').value.trim();
+  const job_name = document.getElementById('trip-job-name').value.trim();
   const purpose = document.getElementById('trip-purpose').value.trim();
   const lead_number = document.getElementById('trip-lead').value.trim();
   const miles = parseFloat(document.getElementById('trip-miles').value);
   const addReturn = document.getElementById('trip-return').checked;
 
-  if (!date || !from_addr || !to_addr || !purpose || isNaN(miles) || miles <= 0) {
-    toast('Please fill in Date, From, To, Purpose, and Miles.'); return;
+  if (!date || !from_addr || !to_addr || isNaN(miles) || miles <= 0) {
+    toast('Please fill in Date, From, To, and Miles.'); return;
   }
 
-  const batch = [{ date, from_addr, to_addr, purpose, lead_number, miles }];
-  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, purpose: 'Return — ' + purpose, lead_number, miles });
+  const batch = [{ date, from_addr, to_addr, job_name, purpose, lead_number, miles }];
+  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), lead_number, miles });
 
   await api('POST', '/api/mileage/trips', batch);
   clearTripForm();
@@ -825,6 +914,7 @@ function clearTripForm() {
   document.getElementById('trip-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('trip-from').value = userSettings.home_address || '';
   document.getElementById('trip-to').value = '';
+  document.getElementById('trip-job-name').value = '';
   document.getElementById('trip-purpose').value = '';
   document.getElementById('trip-lead').value = '';
   document.getElementById('trip-miles').value = '';

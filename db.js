@@ -95,12 +95,14 @@ async function initDb() {
       date TEXT NOT NULL,
       from_addr TEXT NOT NULL,
       to_addr TEXT NOT NULL,
-      purpose TEXT NOT NULL,
+      job_name TEXT DEFAULT '',
+      purpose TEXT DEFAULT '',
       lead_number TEXT DEFAULT '',
       miles NUMERIC NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE mileage_trips ADD COLUMN IF NOT EXISTS job_name TEXT DEFAULT ''`);
   await query(`
     CREATE TABLE IF NOT EXISTS mileage_expenses (
       id SERIAL PRIMARY KEY,
@@ -125,6 +127,15 @@ async function initDb() {
     )
   `);
   await query(`ALTER TABLE mileage_sites ADD COLUMN IF NOT EXISTS purpose TEXT DEFAULT ''`);
+  await query(`ALTER TABLE mileage_sites ADD COLUMN IF NOT EXISTS job_name TEXT DEFAULT ''`);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_purposes (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      purpose_text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Database initialized');
 }
 

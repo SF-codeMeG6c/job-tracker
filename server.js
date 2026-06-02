@@ -341,8 +341,8 @@ app.post('/api/mileage/trips', requireAuth, async (req, res) => {
     const inserted = [];
     for (const t of trips) {
       const r = await query(
-        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,purpose,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-        [req.session.userId, t.date, t.from_addr, t.to_addr, t.purpose, t.lead_number || '', parseFloat(t.miles)]
+        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,job_name,purpose,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+        [req.session.userId, t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.lead_number||'', parseFloat(t.miles)]
       );
       inserted.push(r.rows[0]);
     }
@@ -396,13 +396,40 @@ app.get('/api/mileage/sites', requireAuth, async (req, res) => {
 
 app.post('/api/mileage/sites', requireAuth, async (req, res) => {
   try {
-    const { name, address, purpose } = req.body;
+    const { name, address, job_name } = req.body;
     if (!name || !address) return res.status(400).json({ error: 'Name and address required' });
     const r = await query(
-      'INSERT INTO mileage_sites (user_id,name,address,purpose) VALUES ($1,$2,$3,$4) RETURNING *',
-      [req.session.userId, name.trim(), address.trim(), (purpose || '').trim()]
+      'INSERT INTO mileage_sites (user_id,name,address,job_name) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.session.userId, name.trim(), address.trim(), (job_name || '').trim()]
     );
     res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Purposes
+app.get('/api/mileage/purposes', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT * FROM mileage_purposes WHERE user_id=$1 ORDER BY purpose_text', [req.session.userId]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/purposes', requireAuth, async (req, res) => {
+  try {
+    const { purpose_text } = req.body;
+    if (!purpose_text) return res.status(400).json({ error: 'Purpose text required' });
+    const r = await query(
+      'INSERT INTO mileage_purposes (user_id,purpose_text) VALUES ($1,$2) RETURNING *',
+      [req.session.userId, purpose_text.trim()]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/purposes/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_purposes WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
