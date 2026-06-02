@@ -72,6 +72,12 @@
   .miles-wrap { display: flex; gap: 6px; align-items: flex-end; }
   .miles-wrap input { flex: 1; }
 
+  /* ── Mic button ── */
+  .btn-mic { background: #f1f5f9; border: 1px solid var(--border); border-radius: 5px; padding: 7px 9px; cursor: pointer; font-size: 15px; transition: all .15s; flex-shrink: 0; }
+  .btn-mic:hover { background: #e2e8f0; }
+  .btn-mic.listening { background: #fee2e2; border-color: #fca5a5; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
   /* ── Buttons ── */
   .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-family: Arial; font-weight: 600; transition: all .15s; white-space: nowrap; }
   .btn-primary { background: var(--primary); color: #fff; }
@@ -273,17 +279,26 @@
           </div>
           <div class="form-group" style="flex:2">
             <label>From Address</label>
-            <input type="text" id="trip-from" placeholder="Street address">
+            <div style="display:flex;gap:5px">
+              <input type="text" id="trip-from" placeholder="Street address" style="flex:1">
+              <button class="btn-mic" onclick="startDictation('trip-from')" id="mic-trip-from" title="Speak address">🎤</button>
+            </div>
           </div>
           <div class="form-group" style="flex:2">
             <label>To Address</label>
-            <input type="text" id="trip-to" placeholder="Street address">
+            <div style="display:flex;gap:5px">
+              <input type="text" id="trip-to" placeholder="Street address" style="flex:1">
+              <button class="btn-mic" onclick="startDictation('trip-to')" id="mic-trip-to" title="Speak address">🎤</button>
+            </div>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:3">
             <label>Purpose / Description</label>
-            <input type="text" id="trip-purpose" placeholder="e.g. Conboy site visit for CES">
+            <div style="display:flex;gap:5px">
+              <input type="text" id="trip-purpose" placeholder="e.g. Conboy site visit for CES" style="flex:1">
+              <button class="btn-mic" onclick="startDictation('trip-purpose')" id="mic-trip-purpose" title="Speak purpose">🎤</button>
+            </div>
           </div>
           <div class="form-group" style="flex:1;min-width:110px">
             <label>Lead / Job #</label>
@@ -1087,6 +1102,60 @@ function toast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════════════
+// Dictation (Web Speech API)
+// ══════════════════════════════════════════════════
+let activeMic = null;
+
+function startDictation(fieldId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    toast('Dictation not supported in this browser. Try Chrome.');
+    return;
+  }
+
+  const btn = document.getElementById('mic-' + fieldId);
+
+  // If already listening to this field, stop it
+  if (activeMic && activeMic._fieldId === fieldId) {
+    activeMic.stop();
+    return;
+  }
+
+  // Stop any other active mic
+  if (activeMic) activeMic.stop();
+
+  const recognition = new SpeechRecognition();
+  recognition._fieldId = fieldId;
+  recognition.lang = 'en-US';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    activeMic = recognition;
+    btn.classList.add('listening');
+    btn.textContent = '🔴';
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById(fieldId).value = transcript;
+    toast('✓ "' + transcript + '"');
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error !== 'aborted') toast('Mic error: ' + e.error);
+  };
+
+  recognition.onend = () => {
+    activeMic = null;
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+  };
+
+  recognition.start();
 }
 
 // ── Keyboard: Enter to login ──
