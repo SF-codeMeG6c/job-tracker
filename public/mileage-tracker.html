@@ -340,6 +340,14 @@
               <button class="btn-mic" onclick="startDictation('trip-description')" id="mic-trip-description" title="Speak description">🎤</button>
             </div>
           </div>
+          <div class="form-group" style="flex:0 0 140px">
+            <label>🚗 Drive Time (min)</label>
+            <input type="number" id="trip-drive-time" placeholder="0" min="0" step="1">
+          </div>
+          <div class="form-group" style="flex:0 0 140px">
+            <label>🏠 Time on Site (min)</label>
+            <input type="number" id="trip-site-time" placeholder="0" min="0" step="1">
+          </div>
         </div>
         <div class="form-row" style="margin-bottom:0;align-items:center">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:4px 0">
@@ -614,6 +622,14 @@
       <div class="form-group" style="flex:1">
         <label>Description</label>
         <input type="text" id="edit-description">
+      </div>
+      <div class="form-group" style="flex:0 0 140px">
+        <label>🚗 Drive Time (min)</label>
+        <input type="number" id="edit-drive-time" min="0" step="1" placeholder="0">
+      </div>
+      <div class="form-group" style="flex:0 0 140px">
+        <label>🏠 Time on Site (min)</label>
+        <input type="number" id="edit-site-time" min="0" step="1" placeholder="0">
       </div>
     </div>
     <div class="btn-group" style="margin-top:16px">
@@ -1040,6 +1056,8 @@ async function addTrip() {
   const job_name = document.getElementById('trip-job-name').value.trim();
   const purpose = document.getElementById('trip-purpose').value.trim();
   const description = document.getElementById('trip-description').value.trim();
+  const drive_time = parseInt(document.getElementById('trip-drive-time').value) || 0;
+  const site_time = parseInt(document.getElementById('trip-site-time').value) || 0;
   const lead_number = document.getElementById('trip-lead').value.trim();
   const miles = parseFloat(document.getElementById('trip-miles').value);
   const addReturn = document.getElementById('trip-return').checked;
@@ -1048,8 +1066,8 @@ async function addTrip() {
     toast('Please fill in Date, From, To, and Miles.'); return;
   }
 
-  const batch = [{ date, from_addr, to_addr, job_name, purpose, description, lead_number, miles }];
-  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, lead_number, miles });
+  const batch = [{ date, from_addr, to_addr, job_name, purpose, description, drive_time, site_time, lead_number, miles }];
+  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, drive_time, site_time, lead_number, miles });
 
   await api('POST', '/api/mileage/trips', batch);
   clearTripForm();
@@ -1073,6 +1091,8 @@ function openEditTrip(id) {
   document.getElementById('edit-job-name').value = t.job_name || '';
   document.getElementById('edit-purpose').value = t.purpose || '';
   document.getElementById('edit-description').value = t.description || '';
+  document.getElementById('edit-drive-time').value = t.drive_time || '';
+  document.getElementById('edit-site-time').value = t.site_time || '';
   document.getElementById('edit-lead').value = t.lead_number || '';
   document.getElementById('edit-miles').value = parseFloat(t.miles).toFixed(1);
   document.getElementById('edit-trip-modal').classList.add('open');
@@ -1087,6 +1107,8 @@ async function saveEditTrip() {
     job_name: document.getElementById('edit-job-name').value.trim(),
     purpose: document.getElementById('edit-purpose').value.trim(),
     description: document.getElementById('edit-description').value.trim(),
+    drive_time: parseInt(document.getElementById('edit-drive-time').value) || 0,
+    site_time: parseInt(document.getElementById('edit-site-time').value) || 0,
     lead_number: document.getElementById('edit-lead').value.trim(),
     miles: parseFloat(document.getElementById('edit-miles').value),
   };
@@ -1113,6 +1135,8 @@ function clearTripForm() {
   document.getElementById('trip-job-name').value = '';
   document.getElementById('trip-purpose').value = '';
   document.getElementById('trip-description').value = '';
+  document.getElementById('trip-drive-time').value = '';
+  document.getElementById('trip-site-time').value = '';
   document.getElementById('trip-lead').value = '';
   document.getElementById('trip-miles').value = '';
   document.getElementById('miles-hint').textContent = '';

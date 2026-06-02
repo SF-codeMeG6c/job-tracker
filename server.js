@@ -341,8 +341,8 @@ app.post('/api/mileage/trips', requireAuth, async (req, res) => {
     const inserted = [];
     for (const t of trips) {
       const r = await query(
-        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,job_name,purpose,description,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-        [req.session.userId, t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.description||'', t.lead_number||'', parseFloat(t.miles)]
+        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,job_name,purpose,description,drive_time,site_time,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+        [req.session.userId, t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.description||'', t.drive_time||0, t.site_time||0, t.lead_number||'', parseFloat(t.miles)]
       );
       inserted.push(r.rows[0]);
     }
@@ -354,9 +354,9 @@ app.patch('/api/mileage/trips/:id', requireAuth, async (req, res) => {
   try {
     const { date, from_addr, to_addr, job_name, purpose, description, lead_number, miles } = req.body;
     const r = await query(
-      `UPDATE mileage_trips SET date=$1,from_addr=$2,to_addr=$3,job_name=$4,purpose=$5,description=$6,lead_number=$7,miles=$8
-       WHERE id=$9 AND user_id=$10 RETURNING *`,
-      [date, from_addr, to_addr, job_name||'', purpose||'', description||'', lead_number||'', parseFloat(miles), req.params.id, req.session.userId]
+      `UPDATE mileage_trips SET date=$1,from_addr=$2,to_addr=$3,job_name=$4,purpose=$5,description=$6,drive_time=$7,site_time=$8,lead_number=$9,miles=$10
+       WHERE id=$11 AND user_id=$12 RETURNING *`,
+      [date, from_addr, to_addr, job_name||'', purpose||'', description||'', req.body.drive_time||0, req.body.site_time||0, lead_number||'', parseFloat(miles), req.params.id, req.session.userId]
     );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
