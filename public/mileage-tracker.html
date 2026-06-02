@@ -293,20 +293,31 @@
           </div>
         </div>
         <div class="form-row">
+          <div class="form-group" style="flex:1;min-width:180px">
+            <label>📋 Saved Job Names</label>
+            <select id="job-name-pick" onchange="pickJobName()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+              <option value="">— pick saved job —</option>
+            </select>
+          </div>
           <div class="form-group" style="flex:2">
             <label>Job Name</label>
             <div style="display:flex;gap:5px">
-              <input type="text" id="trip-job-name" placeholder="e.g. Conboy House" style="flex:1">
+              <input type="text" id="trip-job-name" placeholder="Type or pick above" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-job-name')" id="mic-trip-job-name" title="Speak job name">🎤</button>
             </div>
           </div>
-          <div class="form-group" style="flex:3">
-            <label>Purpose</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1;min-width:180px">
+            <label>📋 Saved Purposes</label>
+            <select id="purpose-pick" onchange="pickPurpose()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+              <option value="">— pick saved purpose —</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>Purpose / Description</label>
             <div style="display:flex;gap:5px">
-              <select id="purpose-pick" onchange="pickPurpose()" style="flex:0 0 auto;max-width:160px;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
-                <option value="">— saved —</option>
-              </select>
-              <input type="text" id="trip-purpose" placeholder="e.g. Site visit" style="flex:1">
+              <input type="text" id="trip-purpose" placeholder="Type or pick above" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-purpose')" id="mic-trip-purpose" title="Speak purpose">🎤</button>
             </div>
           </div>
@@ -460,6 +471,24 @@
         </div>
       </div>
 
+      <!-- Saved Job Names -->
+      <div class="card">
+        <div class="settings-group" style="margin-bottom:0">
+          <h3>📋 Saved Job Names</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Save job names to quickly pick from a dropdown on the trip form.</p>
+          <div class="form-row">
+            <div class="form-group" style="flex:3">
+              <label>Job Name</label>
+              <input type="text" id="new-job-name-text" placeholder="e.g. Conboy CES, Hascall Job">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn btn-primary" onclick="addJobName()">+ Add Job Name</button>
+            </div>
+          </div>
+          <div class="site-list" id="job-names-list"></div>
+        </div>
+      </div>
+
       <!-- Saved Purposes -->
       <div class="card">
         <div class="settings-group" style="margin-bottom:0">
@@ -558,6 +587,7 @@ let currentUser = null;
 let userSettings = { rate: 0.70, home_address: '', company: '', dept: '', maps_key: '' };
 let sites = [];
 let purposes = [];
+let jobNames = [];
 let trips = [];
 let expenses = [];
 
@@ -626,7 +656,7 @@ async function startApp() {
   document.getElementById('trips-filter').value = thisMonth;
   document.getElementById('exp-filter').value = thisMonth;
 
-  await Promise.all([loadSettings(), loadSites(), loadPurposes()]);
+  await Promise.all([loadSettings(), loadSites(), loadPurposes(), loadJobNames()]);
   await Promise.all([loadTrips(), loadExpenses()]);
 }
 
@@ -711,6 +741,63 @@ function pickPurpose() {
     document.getElementById('trip-purpose').value = val;
     document.getElementById('purpose-pick').value = '';
   }
+}
+
+function pickJobName() {
+  const val = document.getElementById('job-name-pick').value;
+  if (val) {
+    document.getElementById('trip-job-name').value = val;
+    document.getElementById('job-name-pick').value = '';
+  }
+}
+
+// ── Saved Job Names ─────────────────────────────
+async function loadJobNames() {
+  jobNames = await api('GET', '/api/mileage/jobnames');
+  renderJobNames();
+  updateJobNameDropdown();
+}
+
+function renderJobNames() {
+  const list = document.getElementById('job-names-list');
+  if (!list) return;
+  if (!jobNames.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;font-style:italic;padding:8px 0">No saved job names yet.</div>';
+    return;
+  }
+  list.innerHTML = jobNames.map(j => `
+    <div class="site-item">
+      <div class="site-item-info"><div class="site-name">📋 ${esc(j.job_name_text)}</div></div>
+      <button class="btn btn-danger btn-sm" onclick="deleteJobName(${j.id})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function updateJobNameDropdown() {
+  const sel = document.getElementById('job-name-pick');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— pick saved job —</option>' +
+    jobNames.map(j => `<option value="${esc(j.job_name_text)}">${esc(j.job_name_text)}</option>`).join('');
+}
+
+async function addJobName() {
+  const text = document.getElementById('new-job-name-text').value.trim();
+  if (!text) { toast('Enter a job name first.'); return; }
+  const j = await api('POST', '/api/mileage/jobnames', { job_name_text: text });
+  document.getElementById('new-job-name-text').value = '';
+  jobNames.push(j);
+  jobNames.sort((a, b) => a.job_name_text.localeCompare(b.job_name_text));
+  renderJobNames();
+  updateJobNameDropdown();
+  toast('Job name saved!');
+}
+
+async function deleteJobName(id) {
+  if (!confirm('Remove this saved job name?')) return;
+  await api('DELETE', '/api/mileage/jobnames/' + id);
+  jobNames = jobNames.filter(j => j.id !== id);
+  renderJobNames();
+  updateJobNameDropdown();
 }
 
 async function addSite() {

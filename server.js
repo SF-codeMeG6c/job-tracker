@@ -433,6 +433,33 @@ app.delete('/api/mileage/purposes/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Job Names
+app.get('/api/mileage/jobnames', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT * FROM mileage_job_names WHERE user_id=$1 ORDER BY job_name_text', [req.session.userId]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/jobnames', requireAuth, async (req, res) => {
+  try {
+    const { job_name_text } = req.body;
+    if (!job_name_text) return res.status(400).json({ error: 'Job name required' });
+    const r = await query(
+      'INSERT INTO mileage_job_names (user_id,job_name_text) VALUES ($1,$2) RETURNING *',
+      [req.session.userId, job_name_text.trim()]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/jobnames/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_job_names WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/mileage/sites/:id', requireAuth, async (req, res) => {
   try {
     await query('DELETE FROM mileage_sites WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
