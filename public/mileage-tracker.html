@@ -304,6 +304,7 @@
             <div style="display:flex;gap:5px">
               <input type="text" id="trip-job-name" placeholder="Type or pick above" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-job-name')" id="mic-trip-job-name" title="Speak job name">🎤</button>
+              <button class="btn btn-secondary btn-sm" onclick="saveCurrentJobName()" title="Save this job name to your list">💾</button>
             </div>
           </div>
         </div>
@@ -783,8 +784,21 @@ function updateJobNameDropdown() {
 async function addJobName() {
   const text = document.getElementById('new-job-name-text').value.trim();
   if (!text) { toast('Enter a job name first.'); return; }
-  const j = await api('POST', '/api/mileage/jobnames', { job_name_text: text });
+  await saveJobNameText(text);
   document.getElementById('new-job-name-text').value = '';
+}
+
+async function saveCurrentJobName() {
+  const text = document.getElementById('trip-job-name').value.trim();
+  if (!text) { toast('Type a job name first.'); return; }
+  if (jobNames.find(j => j.job_name_text.toLowerCase() === text.toLowerCase())) {
+    toast('Already saved!'); return;
+  }
+  await saveJobNameText(text);
+}
+
+async function saveJobNameText(text) {
+  const j = await api('POST', '/api/mileage/jobnames', { job_name_text: text });
   jobNames.push(j);
   jobNames.sort((a, b) => a.job_name_text.localeCompare(b.job_name_text));
   renderJobNames();
