@@ -77,6 +77,52 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  // ── Mileage Tracker Tables ──────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_settings (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      rate NUMERIC DEFAULT 0.70,
+      home_address TEXT DEFAULT '',
+      company TEXT DEFAULT '',
+      dept TEXT DEFAULT '',
+      maps_key TEXT DEFAULT ''
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_trips (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      from_addr TEXT NOT NULL,
+      to_addr TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      lead_number TEXT DEFAULT '',
+      miles NUMERIC NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_expenses (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      description TEXT NOT NULL,
+      amount NUMERIC NOT NULL,
+      receipt_data TEXT,
+      receipt_name TEXT,
+      receipt_type TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_sites (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      address TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Database initialized');
 }
 

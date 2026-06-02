@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mileage & Expense Tracker</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1a56a0;
+    --primary-dark: #134080;
+    --accent: #e8f0fb;
+    --border: #d1d9e6;
+    --text: #1e2532;
+    --text-muted: #6b7a99;
+    --success: #1a7a4a;
+    --danger: #c0392b;
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ── Login ── */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a56a0 0%, #0d2d5e 100%); }
+  .login-box { background: #fff; border-radius: 12px; padding: 40px; width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .login-logo { font-size: 28px; margin-bottom: 4px; }
+  .login-title { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .login-tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+  .login-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .login-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .login-tab-pane { display: none; }
+  .login-tab-pane.active { display: block; }
+
+  /* ── Layout ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  #app.visible { display: flex; }
+  header { background: var(--primary); color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  .user-chip { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  nav { background: var(--primary-dark); display: flex; gap: 2px; padding: 0 14px; overflow-x: auto; }
+  nav button { background: none; border: none; color: rgba(255,255,255,.75); padding: 10px 16px; cursor: pointer; font-size: 13px; font-family: Arial; border-bottom: 3px solid transparent; transition: all .15s; white-space: nowrap; }
+  nav button:hover { color: #fff; }
+  nav button.active { color: #fff; border-bottom-color: #7eb3f5; }
+  main { flex: 1; padding: 20px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--primary); }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Forms ── */
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
+  .form-group label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-size: 13px; font-family: Arial; color: var(--text); background: #fff;
+  }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,160,.1); }
+  .hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── Site picker row ── */
+  .site-pick-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+  .site-pick-row select { flex: 1; min-width: 160px; border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-size: 13px; background: #fff; }
+  .site-pick-row .arrow { color: var(--text-muted); font-size: 18px; padding-bottom: 4px; }
+
+  /* ── Miles row ── */
+  .miles-wrap { display: flex; gap: 6px; align-items: flex-end; }
+  .miles-wrap input { flex: 1; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-family: Arial; font-weight: 600; transition: all .15s; white-space: nowrap; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: #e8edf5; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #d5dcea; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #155c38; }
+  .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn-map { background: #4285f4; color: #fff; }
+  .btn-map:hover { background: #3367d6; }
+  .btn-map:disabled { background: #9bb8f8; cursor: not-allowed; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-link { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 13px; padding: 0; text-decoration: underline; }
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--accent); color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid #edf0f7; vertical-align: middle; }
+  tr:hover td { background: #fafbfd; }
+  .empty-row td { text-align: center; color: var(--text-muted); padding: 28px; font-style: italic; }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Alerts ── */
+  .alert { padding: 9px 12px; border-radius: 5px; font-size: 13px; margin-bottom: 12px; }
+  .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+  /* ── Receipt ── */
+  .receipt-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+  .receipt-ph { width: 36px; height: 36px; background: #f1f5f9; border-radius: 4px; border: 1px dashed var(--border); display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer; }
+
+  /* ── Report ── */
+  #report-preview { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .report-toolbar { padding: 12px 18px; display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--border); background: var(--accent); }
+  .report-toolbar .form-group { min-width: 110px; flex: 0 0 auto; }
+  .report-body { padding: 22px; }
+
+  /* Report print table */
+  .report-title-block { margin-bottom: 18px; }
+  .report-title-block h2 { font-size: 17px; font-weight: 700; color: var(--primary); }
+  .report-meta { display: flex; gap: 28px; margin-top: 6px; font-size: 13px; flex-wrap: wrap; }
+  .print-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+  .print-table th { background: var(--primary); color: #fff; padding: 7px 10px; text-align: left; font-size: 12px; }
+  .print-table td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; }
+  .print-table tfoot td { font-weight: 700; background: var(--accent); border-top: 2px solid var(--primary); }
+  .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 16px; }
+  .totals-box { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .totals-box-title { background: var(--primary); color: #fff; padding: 7px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; }
+  .totals-box table { width: 100%; }
+  .totals-box td { padding: 6px 12px; border-bottom: 1px solid #edf0f7; font-size: 13px; }
+  .totals-box tr:last-child td { border-bottom: none; font-weight: 700; background: #f0f4fa; }
+  .summary-box { border: 2px solid var(--primary); border-radius: var(--radius); padding: 14px; background: var(--accent); margin-top: 0; }
+  .summary-line { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+  .summary-total { display: flex; justify-content: space-between; padding: 8px 0 0; border-top: 2px solid var(--primary); font-size: 15px; font-weight: 700; color: var(--primary); }
+
+  /* ── Settings sections ── */
+  .settings-group { margin-bottom: 22px; }
+  .settings-group h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 7px; }
+
+  /* ── Sites management ── */
+  .site-list { margin-top: 12px; }
+  .site-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px; background: #fafbfd; }
+  .site-item-info { flex: 1; }
+  .site-name { font-weight: 700; font-size: 13px; }
+  .site-addr { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: var(--radius); padding: 22px; max-width: 620px; width: 92%; max-height: 90vh; overflow-y: auto; position: relative; }
+  .modal h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .modal-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+  .modal-img { max-width: 100%; border-radius: 4px; }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #1e2532; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; z-index: 9999; display: none; }
+  #toast.show { display: block; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; }
+    #login-screen, header, nav, .report-toolbar, .btn-group, .no-print { display: none !important; }
+    main { padding: 0; max-width: none; }
+    .card { border: none; padding: 0; margin: 0; }
+    #report-preview { border: none; }
+    .report-body { padding: 4px; }
+    .section { display: block !important; }
+    #trips-section, #expenses-section, #settings-section { display: none !important; }
+    .print-table th { background: #1a56a0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .totals-box-title { background: #1a56a0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .totals-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🚗</div>
+    <div class="login-title">Mileage Tracker</div>
+    <div class="login-sub">Sign in to your account</div>
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('signin')">Sign In</div>
+      <div class="login-tab" onclick="switchLoginTab('register')">Register New User</div>
+    </div>
+
+    <div id="tab-signin" class="login-tab-pane active">
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Username</label>
+        <input type="text" id="login-user" placeholder="username" autocomplete="username">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign In</button>
+      <div id="login-err" style="color:#c0392b;font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+
+    <div id="tab-register" class="login-tab-pane">
+      <div class="alert alert-info" style="margin-bottom:12px">Ask your admin for the setup key to register a new account.</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Full Name</label>
+        <input type="text" id="reg-name" placeholder="First Last">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Username</label>
+        <input type="text" id="reg-user" placeholder="username (no spaces)">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Password</label>
+        <input type="password" id="reg-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Setup Key</label>
+        <input type="password" id="reg-key" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
+      <div id="reg-err" style="color:#c0392b;font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+  <header>
+    <div class="header-left">
+      <span style="font-size:22px">🚗</span>
+      <h1>Mileage &amp; Expense Tracker</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="user-chip">👤 <span id="user-display-name"></span></div>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+  <nav>
+    <button class="active" onclick="showSection('trips',this)">📍 Trips</button>
+    <button onclick="showSection('expenses',this)">💰 Expenses</button>
+    <button onclick="showSection('report',this)">📄 Report</button>
+    <button onclick="showSection('settings',this)">⚙ Settings</button>
+  </nav>
+
+  <main>
+
+    <!-- ── TRIPS ── -->
+    <div id="trips-section" class="section active">
+      <div class="card">
+        <div class="card-title">Add Trip</div>
+
+        <!-- Frequent site pickers -->
+        <div class="site-pick-row">
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent From</div>
+            <select id="pick-from" onchange="pickSite('from')">
+              <option value="">— pick saved site —</option>
+            </select>
+          </div>
+          <div class="arrow">→</div>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent To</div>
+            <select id="pick-to" onchange="pickSite('to')">
+              <option value="">— pick saved site —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 135px">
+            <label>Date</label>
+            <input type="date" id="trip-date">
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>From Address</label>
+            <input type="text" id="trip-from" placeholder="Street address">
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>To Address</label>
+            <input type="text" id="trip-to" placeholder="Street address">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:3">
+            <label>Purpose / Description</label>
+            <input type="text" id="trip-purpose" placeholder="e.g. Conboy site visit for CES">
+          </div>
+          <div class="form-group" style="flex:1;min-width:110px">
+            <label>Lead / Job #</label>
+            <input type="text" id="trip-lead" placeholder="Optional">
+          </div>
+          <div class="form-group" style="flex:0 0 155px">
+            <label>Miles</label>
+            <div class="miles-wrap">
+              <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1">
+              <button class="btn btn-map btn-sm" id="fetch-btn" onclick="fetchMiles()" title="Auto-lookup miles">
+                <span id="fetch-icon">📍</span> Lookup
+              </button>
+            </div>
+            <span class="hint" id="miles-hint"></span>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:0;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:4px 0">
+            <input type="checkbox" id="trip-return" checked style="width:15px;height:15px"> Add return trip automatically
+          </label>
+        </div>
+        <div class="btn-group" style="margin-top:12px">
+          <button class="btn btn-primary" onclick="addTrip()">+ Add Trip</button>
+          <button class="btn btn-secondary" onclick="clearTripForm()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="card-title" style="margin-bottom:0">Trip Log</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="month" id="trips-filter" onchange="loadTrips()" style="border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:13px">
+            <button class="btn btn-secondary btn-sm" onclick="clearTripFilter()">All</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>From</th><th>To</th><th>Purpose</th><th>Lead #</th>
+              <th style="text-align:right">Miles</th><th></th>
+            </tr></thead>
+            <tbody id="trips-tbody"></tbody>
+          </table>
+        </div>
+        <div id="trips-total" style="text-align:right;margin-top:10px;font-weight:700;color:var(--primary);font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- ── EXPENSES ── -->
+    <div id="expenses-section" class="section">
+      <div class="card">
+        <div class="card-title">Add Expense</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 135px">
+            <label>Date</label>
+            <input type="date" id="exp-date">
+          </div>
+          <div class="form-group" style="flex:3">
+            <label>Description</label>
+            <input type="text" id="exp-desc" placeholder="e.g. Lunch with adjuster, Paper, Ink">
+          </div>
+          <div class="form-group" style="flex:0 0 115px">
+            <label>Amount ($)</label>
+            <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group">
+            <label>Receipt (photo or PDF)</label>
+            <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px">
+            <span class="hint">Saved to the cloud — safe even if browser is cleared</span>
+          </div>
+        </div>
+        <div class="btn-group" style="margin-top:12px">
+          <button class="btn btn-primary" onclick="addExpense()">+ Add Expense</button>
+          <button class="btn btn-secondary" onclick="clearExpenseForm()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="card-title" style="margin-bottom:0">Expense Log</div>
+          <input type="month" id="exp-filter" onchange="loadExpenses()" style="border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:13px">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th>Receipt</th><th></th>
+            </tr></thead>
+            <tbody id="expenses-tbody"></tbody>
+          </table>
+        </div>
+        <div id="expenses-total" style="text-align:right;margin-top:10px;font-weight:700;color:var(--primary);font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- ── REPORT ── -->
+    <div id="report-section" class="section">
+      <div id="report-preview">
+        <div class="report-toolbar no-print">
+          <div class="form-group">
+            <label>Month</label>
+            <input type="month" id="report-month">
+          </div>
+          <div class="form-group">
+            <label>Employee Name</label>
+            <input type="text" id="report-name" placeholder="Your name">
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="renderReport()">↻ Generate</button>
+            <button class="btn btn-success" onclick="window.print()">🖨 Print</button>
+            <button class="btn btn-secondary" onclick="exportExcel()">📊 Export Excel</button>
+          </div>
+        </div>
+        <div class="report-body" id="report-body">
+          <div style="color:var(--text-muted);text-align:center;padding:40px;font-style:italic">
+            Select a month and click Generate to preview your report.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div id="settings-section" class="section">
+
+      <!-- Frequent Sites -->
+      <div class="card">
+        <div class="settings-group" style="margin-bottom:0">
+          <h3>📌 Frequent Sites</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Save addresses you visit often so you can quickly pick them in the trip form.</p>
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:130px">
+              <label>Site Name</label>
+              <input type="text" id="new-site-name" placeholder="e.g. Office, Conboy House">
+            </div>
+            <div class="form-group" style="flex:3">
+              <label>Address</label>
+              <input type="text" id="new-site-addr" placeholder="Full street address">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn btn-primary" onclick="addSite()">+ Add Site</button>
+            </div>
+          </div>
+          <div class="site-list" id="sites-list"></div>
+        </div>
+      </div>
+
+      <!-- User Settings -->
+      <div class="card">
+        <div class="settings-group">
+          <h3>👤 My Info</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Home Address (auto-fills "From")</label>
+              <input type="text" id="set-home" placeholder="Your home address">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3>💰 Mileage Rate</h3>
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 180px">
+              <label>Rate ($ per mile)</label>
+              <input type="number" id="set-rate" placeholder="0.70" step="0.001" min="0">
+              <span class="hint">IRS 2025 rate: $0.70/mile</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3>🗺 Google Maps (Optional)</h3>
+          <div class="alert alert-info">
+            <strong>No key needed:</strong> Miles are auto-fetched via free OpenStreetMap. Optionally add a Google Maps API key for higher accuracy.
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Google Maps API Key</label>
+              <input type="password" id="set-maps-key" placeholder="AIza... (optional)">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group" style="margin-bottom:0">
+          <h3>🏢 Report Header</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Company Name</label>
+              <input type="text" id="set-company" placeholder="e.g. Acme Construction">
+            </div>
+            <div class="form-group">
+              <label>Submit To (Dept)</label>
+              <input type="text" id="set-dept" placeholder="e.g. Accounts Payable">
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:14px">
+          <button class="btn btn-primary" onclick="saveSettings()">✓ Save Settings</button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- Receipt modal -->
+<div class="modal-overlay" id="receipt-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h2>Receipt</h2>
+    <div id="receipt-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════
+let currentUser = null;
+let userSettings = { rate: 0.70, home_address: '', company: '', dept: '', maps_key: '' };
+let sites = [];
+let trips = [];
+let expenses = [];
+
+// ══════════════════════════════════════════════════
+// Auth
+// ══════════════════════════════════════════════════
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.login-tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  try {
+    const r = await api('POST', '/api/auth/login', { username, password });
+    if (r.error) { errEl.textContent = r.error; return; }
+    currentUser = r;
+    await startApp();
+  } catch (e) { errEl.textContent = 'Login failed. Check server connection.'; }
+}
+
+async function doRegister() {
+  const display_name = document.getElementById('reg-name').value.trim();
+  const username = document.getElementById('reg-user').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const setup_key = document.getElementById('reg-key').value;
+  const errEl = document.getElementById('reg-err');
+  errEl.textContent = '';
+  if (!display_name || !username || !password || !setup_key) { errEl.textContent = 'All fields required.'; return; }
+  try {
+    const r = await api('POST', '/api/auth/register', { display_name, username, password, setup_key });
+    if (r.error) { errEl.textContent = r.error; return; }
+    document.getElementById('login-user').value = username;
+    document.getElementById('login-pass').value = password;
+    switchLoginTab('signin'); document.querySelector('.login-tab').click();
+    toast('Account created! Sign in now.');
+  } catch (e) { errEl.textContent = 'Registration failed.'; }
+}
+
+async function doLogout() {
+  await api('POST', '/api/auth/logout');
+  currentUser = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════════
+// App startup
+// ══════════════════════════════════════════════════
+async function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('user-display-name').textContent = currentUser.displayName || currentUser.username;
+  document.getElementById('report-name').value = currentUser.displayName || currentUser.username;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+  document.getElementById('trip-date').value = today;
+  document.getElementById('exp-date').value = today;
+  document.getElementById('report-month').value = thisMonth;
+  document.getElementById('trips-filter').value = thisMonth;
+  document.getElementById('exp-filter').value = thisMonth;
+
+  await Promise.all([loadSettings(), loadSites()]);
+  await Promise.all([loadTrips(), loadExpenses()]);
+}
+
+// ══════════════════════════════════════════════════
+// Settings
+// ══════════════════════════════════════════════════
+async function loadSettings() {
+  const s = await api('GET', '/api/mileage/settings');
+  userSettings = s;
+  document.getElementById('set-home').value = s.home_address || '';
+  document.getElementById('set-rate').value = s.rate || 0.70;
+  document.getElementById('set-maps-key').value = s.maps_key || '';
+  document.getElementById('set-company').value = s.company || '';
+  document.getElementById('set-dept').value = s.dept || '';
+  if (s.home_address && !document.getElementById('trip-from').value) {
+    document.getElementById('trip-from').value = s.home_address;
+  }
+}
+
+async function saveSettings() {
+  userSettings = {
+    rate: parseFloat(document.getElementById('set-rate').value) || 0.70,
+    home_address: document.getElementById('set-home').value.trim(),
+    company: document.getElementById('set-company').value.trim(),
+    dept: document.getElementById('set-dept').value.trim(),
+    maps_key: document.getElementById('set-maps-key').value.trim(),
+  };
+  await api('PUT', '/api/mileage/settings', userSettings);
+  toast('Settings saved!');
+}
+
+// ══════════════════════════════════════════════════
+// Frequent Sites
+// ══════════════════════════════════════════════════
+async function loadSites() {
+  sites = await api('GET', '/api/mileage/sites');
+  renderSites();
+  updateSiteDropdowns();
+}
+
+function renderSites() {
+  const list = document.getElementById('sites-list');
+  if (!sites.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;font-style:italic;padding:8px 0">No saved sites yet. Add your office, home, or frequent job sites above.</div>';
+    return;
+  }
+  list.innerHTML = sites.map(s => `
+    <div class="site-item">
+      <div class="site-item-info">
+        <div class="site-name">📌 ${esc(s.name)}</div>
+        <div class="site-addr">${esc(s.address)}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteSite(${s.id})" title="Delete site">🗑</button>
+    </div>
+  `).join('');
+}
+
+function updateSiteDropdowns() {
+  const options = '<option value="">— pick saved site —</option>' +
+    sites.map(s => `<option value="${esc(s.address)}">${esc(s.name)}</option>`).join('');
+  document.getElementById('pick-from').innerHTML = options;
+  document.getElementById('pick-to').innerHTML = options;
+}
+
+function pickSite(field) {
+  const select = document.getElementById('pick-' + field);
+  const addr = select.value;
+  if (addr) {
+    document.getElementById('trip-' + field).value = addr;
+    select.value = '';
+  }
+}
+
+async function addSite() {
+  const name = document.getElementById('new-site-name').value.trim();
+  const address = document.getElementById('new-site-addr').value.trim();
+  if (!name || !address) { toast('Enter both a site name and address.'); return; }
+  const s = await api('POST', '/api/mileage/sites', { name, address });
+  document.getElementById('new-site-name').value = '';
+  document.getElementById('new-site-addr').value = '';
+  sites.push(s);
+  sites.sort((a, b) => a.name.localeCompare(b.name));
+  renderSites();
+  updateSiteDropdowns();
+  toast('Site saved!');
+}
+
+async function deleteSite(id) {
+  if (!confirm('Remove this saved site?')) return;
+  await api('DELETE', '/api/mileage/sites/' + id);
+  sites = sites.filter(s => s.id !== id);
+  renderSites();
+  updateSiteDropdowns();
+}
+
+// ══════════════════════════════════════════════════
+// Miles lookup
+// ══════════════════════════════════════════════════
+async function fetchMiles() {
+  const from = document.getElementById('trip-from').value.trim();
+  const to = document.getElementById('trip-to').value.trim();
+  if (!from || !to) { toast('Enter both From and To addresses first.'); return; }
+
+  const btn = document.getElementById('fetch-btn');
+  const icon = document.getElementById('fetch-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spinner"></span>';
+  document.getElementById('miles-hint').textContent = 'Looking up...';
+
+  try {
+    if (userSettings.maps_key) {
+      await lookupGoogle(from, to);
+    } else {
+      await lookupOSRM(from, to);
+    }
+  } catch (e) {
+    try { await lookupOSRM(from, to); }
+    catch { document.getElementById('miles-hint').textContent = 'Lookup failed — enter miles manually'; }
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '📍';
+  }
+}
+
+async function lookupGoogle(from, to) {
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(from)}&destinations=${encodeURIComponent(to)}&units=imperial&key=${userSettings.maps_key}`;
+  const d = await (await fetch(url)).json();
+  const text = d.rows?.[0]?.elements?.[0]?.distance?.text;
+  if (!text) throw new Error('No result');
+  const miles = parseFloat(text.replace(/[^0-9.]/g, ''));
+  document.getElementById('trip-miles').value = miles.toFixed(1);
+  document.getElementById('miles-hint').textContent = `✓ Google Maps: ${text}`;
+}
+
+async function lookupOSRM(from, to) {
+  const geo = async addr => {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
+    const d = await r.json();
+    if (!d.length) throw new Error('Address not found: ' + addr);
+    return { lat: d[0].lat, lon: d[0].lon };
+  };
+  const [o, dest] = await Promise.all([geo(from), geo(to)]);
+  const rd = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${o.lon},${o.lat};${dest.lon},${dest.lat}?overview=false`)).json();
+  if (!rd.routes?.[0]?.distance) throw new Error('No route');
+  const miles = (rd.routes[0].distance / 1609.344).toFixed(1);
+  document.getElementById('trip-miles').value = miles;
+  document.getElementById('miles-hint').textContent = `✓ OpenStreetMap: ${miles} mi`;
+}
+
+// ══════════════════════════════════════════════════
+// Trips
+// ══════════════════════════════════════════════════
+async function loadTrips() {
+  const month = document.getElementById('trips-filter').value;
+  const qs = month ? '?month=' + month : '';
+  trips = await api('GET', '/api/mileage/trips' + qs);
+  renderTrips();
+}
+
+function renderTrips() {
+  const tbody = document.getElementById('trips-tbody');
+  tbody.innerHTML = '';
+  if (!trips.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No trips recorded yet.</td></tr>';
+    document.getElementById('trips-total').textContent = '';
+    return;
+  }
+  let total = 0;
+  trips.forEach(t => {
+    total += parseFloat(t.miles) || 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDate(t.date)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.from_addr)}">${esc(t.from_addr)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.to_addr)}">${esc(t.to_addr)}</td>
+      <td style="max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose)}</td>
+      <td>${t.lead_number ? `<span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700">${esc(t.lead_number)}</span>` : ''}</td>
+      <td style="text-align:right;font-weight:600">${parseFloat(t.miles).toFixed(1)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">🗑</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  const reimb = total * (parseFloat(userSettings.rate) || 0.70);
+  document.getElementById('trips-total').innerHTML =
+    `Total: <strong>${total.toFixed(1)} miles</strong> &nbsp;|&nbsp; Reimbursement @ $${parseFloat(userSettings.rate || 0.70).toFixed(3)}/mi: <strong style="color:var(--success)">$${reimb.toFixed(2)}</strong>`;
+}
+
+async function addTrip() {
+  const date = document.getElementById('trip-date').value;
+  const from_addr = document.getElementById('trip-from').value.trim();
+  const to_addr = document.getElementById('trip-to').value.trim();
+  const purpose = document.getElementById('trip-purpose').value.trim();
+  const lead_number = document.getElementById('trip-lead').value.trim();
+  const miles = parseFloat(document.getElementById('trip-miles').value);
+  const addReturn = document.getElementById('trip-return').checked;
+
+  if (!date || !from_addr || !to_addr || !purpose || isNaN(miles) || miles <= 0) {
+    toast('Please fill in Date, From, To, Purpose, and Miles.'); return;
+  }
+
+  const batch = [{ date, from_addr, to_addr, purpose, lead_number, miles }];
+  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, purpose: 'Return — ' + purpose, lead_number, miles });
+
+  await api('POST', '/api/mileage/trips', batch);
+  clearTripForm();
+  await loadTrips();
+  toast(addReturn ? 'Trip + return added!' : 'Trip added!');
+}
+
+async function deleteTrip(id) {
+  if (!confirm('Delete this trip?')) return;
+  await api('DELETE', '/api/mileage/trips/' + id);
+  await loadTrips();
+}
+
+function clearTripForm() {
+  document.getElementById('trip-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('trip-from').value = userSettings.home_address || '';
+  document.getElementById('trip-to').value = '';
+  document.getElementById('trip-purpose').value = '';
+  document.getElementById('trip-lead').value = '';
+  document.getElementById('trip-miles').value = '';
+  document.getElementById('miles-hint').textContent = '';
+  document.getElementById('trip-return').checked = true;
+}
+
+function clearTripFilter() {
+  document.getElementById('trips-filter').value = '';
+  loadTrips();
+}
+
+// ══════════════════════════════════════════════════
+// Expenses
+// ══════════════════════════════════════════════════
+async function loadExpenses() {
+  const month = document.getElementById('exp-filter').value;
+  const qs = month ? '?month=' + month : '';
+  expenses = await api('GET', '/api/mileage/expenses' + qs);
+  renderExpenses();
+}
+
+function renderExpenses() {
+  const tbody = document.getElementById('expenses-tbody');
+  tbody.innerHTML = '';
+  if (!expenses.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No expenses recorded yet.</td></tr>';
+    document.getElementById('expenses-total').textContent = '';
+    return;
+  }
+  let total = 0;
+  expenses.forEach(e => {
+    total += parseFloat(e.amount) || 0;
+    let receiptHtml = '<span style="color:#ccc;font-size:12px">—</span>';
+    if (e.receipt_data) {
+      if (e.receipt_type && e.receipt_type.startsWith('image/')) {
+        receiptHtml = `<img src="${e.receipt_data}" class="receipt-thumb" onclick='viewReceipt(${JSON.stringify(e.receipt_data)},${JSON.stringify(e.receipt_name||"")},${JSON.stringify(e.receipt_type||"")})' title="View receipt">`;
+      } else {
+        receiptHtml = `<div class="receipt-ph" onclick='viewReceipt(${JSON.stringify(e.receipt_data)},${JSON.stringify(e.receipt_name||"")},${JSON.stringify(e.receipt_type||"")})' title="${esc(e.receipt_name)}">📄</div>`;
+      }
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDate(e.date)}</td>
+      <td>${esc(e.description)}</td>
+      <td style="text-align:right;font-weight:600">$${parseFloat(e.amount).toFixed(2)}</td>
+      <td>${receiptHtml}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">🗑</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('expenses-total').innerHTML =
+    `Total Expenses: <strong style="color:var(--success)">$${total.toFixed(2)}</strong>`;
+}
+
+async function addExpense() {
+  const date = document.getElementById('exp-date').value;
+  const description = document.getElementById('exp-desc').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const fileInput = document.getElementById('exp-receipt');
+
+  if (!date || !description || isNaN(amount) || amount < 0) {
+    toast('Please fill in Date, Description, and Amount.'); return;
+  }
+
+  let receipt_data = null, receipt_name = null, receipt_type = null;
+  if (fileInput.files[0]) {
+    const f = fileInput.files[0];
+    receipt_name = f.name;
+    receipt_type = f.type;
+    receipt_data = await fileToBase64(f);
+  }
+
+  await api('POST', '/api/mileage/expenses', { date, description, amount, receipt_data, receipt_name, receipt_type });
+  clearExpenseForm();
+  await loadExpenses();
+  toast('Expense added!');
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  await api('DELETE', '/api/mileage/expenses/' + id);
+  await loadExpenses();
+}
+
+function clearExpenseForm() {
+  document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('exp-desc').value = '';
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-receipt').value = '';
+}
+
+function viewReceipt(data, name, type) {
+  const c = document.getElementById('receipt-content');
+  c.innerHTML = type.startsWith('image/')
+    ? `<img src="${data}" class="modal-img">`
+    : `<embed src="${data}" type="application/pdf" width="100%" height="500px">`;
+  document.getElementById('receipt-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('receipt-modal').classList.remove('open'); }
+document.getElementById('receipt-modal').addEventListener('click', e => { if (e.target.id === 'receipt-modal') closeModal(); });
+
+// ══════════════════════════════════════════════════
+// Report
+// ══════════════════════════════════════════════════
+async function renderReport() {
+  const month = document.getElementById('report-month').value;
+  const empName = document.getElementById('report-name').value.trim() || currentUser.displayName || 'EMPLOYEE NAME';
+  if (!month) { toast('Please select a month.'); return; }
+
+  const [rTrips, rExp] = await Promise.all([
+    api('GET', '/api/mileage/trips?month=' + month),
+    api('GET', '/api/mileage/expenses?month=' + month)
+  ]);
+
+  const rate = parseFloat(userSettings.rate) || 0.70;
+  const totalMiles = rTrips.reduce((s, t) => s + parseFloat(t.miles || 0), 0);
+  const mileageReimb = totalMiles * rate;
+  const totalExp = rExp.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+  const grandTotal = mileageReimb + totalExp;
+  const [yr, mo] = month.split('-');
+  const monthName = new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  let odo = 0;
+  const tripRows = rTrips.map(t => {
+    const start = odo; const end = odo + parseFloat(t.miles || 0); odo = end;
+    return { ...t, start, end };
+  });
+
+  document.getElementById('report-body').innerHTML = `
+    <div class="report-title-block">
+      <h2>${esc(userSettings.company || 'Mileage & Reimbursement Report')}</h2>
+      <div class="report-meta">
+        <span><strong>Period:</strong> ${monthName}</span>
+        <span><strong>Employee:</strong> ${esc(empName)}</span>
+        ${userSettings.dept ? `<span><strong>Submit To:</strong> ${esc(userSettings.dept)}</span>` : ''}
+        <span><strong>Rate:</strong> $${rate.toFixed(3)}/mile</span>
+      </div>
+    </div>
+
+    <table class="print-table">
+      <thead><tr>
+        <th>Date</th><th>Start</th><th>End</th><th>Address — Purpose</th><th>Lead #</th>
+        <th style="text-align:right">Miles</th>
+      </tr></thead>
+      <tbody>
+        ${tripRows.length ? tripRows.map(t => `
+          <tr>
+            <td>${fmtDate(t.date)}</td>
+            <td>${t.start.toFixed(1)}</td>
+            <td>${t.end.toFixed(1)}</td>
+            <td>${esc(t.to_addr + (t.purpose ? ' — ' + t.purpose : ''))}</td>
+            <td>${esc(t.lead_number || '')}</td>
+            <td style="text-align:right">${parseFloat(t.miles).toFixed(1)}</td>
+          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:16px">No trips this period</td></tr>'}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="5" style="text-align:right">Total Mileage:</td>
+        <td style="text-align:right">${totalMiles.toFixed(1)}</td>
+      </tr></tfoot>
+    </table>
+
+    <div class="totals-grid">
+      <div class="totals-box">
+        <div class="totals-box-title">Description — Expenses</div>
+        <table><tbody>
+          ${rExp.length ? rExp.map(e => `
+            <tr>
+              <td>${fmtDate(e.date)}</td>
+              <td>${esc(e.description)}</td>
+              <td style="text-align:right">$${parseFloat(e.amount).toFixed(2)}</td>
+            </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:#999;font-style:italic">No expenses</td></tr>'}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="2" style="text-align:right">Total Expenses:</td>
+          <td style="text-align:right">$${totalExp.toFixed(2)}</td>
+        </tr></tfoot></table>
+      </div>
+
+      <div>
+        <div class="summary-box">
+          <div class="summary-line"><span>Total Mileage:</span><span>${totalMiles.toFixed(1)} miles</span></div>
+          <div class="summary-line"><span>Mileage Reimbursement (${totalMiles.toFixed(1)} × $${rate.toFixed(3)}):</span><span>$${mileageReimb.toFixed(2)}</span></div>
+          <div class="summary-line"><span>Expenses:</span><span>$${totalExp.toFixed(2)}</span></div>
+          <div class="summary-total"><span>TOTAL REIMBURSEMENT:</span><span>$${grandTotal.toFixed(2)}</span></div>
+        </div>
+        <div style="margin-top:30px;border-top:1px solid #000;padding-top:6px;font-size:12px;color:#555">
+          <strong>NAME: ${esc(empName)}</strong><br>
+          <small>Mileage &amp; Reimbursement Form — ${monthName}</small>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function exportExcel() {
+  const month = document.getElementById('report-month').value;
+  const empName = document.getElementById('report-name').value.trim() || currentUser.displayName || 'EMPLOYEE NAME';
+  if (!month) { toast('Select a month first.'); return; }
+
+  const [rTrips, rExp] = await Promise.all([
+    api('GET', '/api/mileage/trips?month=' + month),
+    api('GET', '/api/mileage/expenses?month=' + month)
+  ]);
+
+  const rate = parseFloat(userSettings.rate) || 0.70;
+  const wb = XLSX.utils.book_new();
+  const rows = [['Date', 'Start', 'End', 'ADDRESS - PURPOSE', 'Miles', 'Lead Number']];
+
+  let odo = 0;
+  rTrips.forEach(t => {
+    const start = odo; const end = odo + parseFloat(t.miles || 0); odo = end;
+    rows.push([t.date, +start.toFixed(1), +end.toFixed(1), `${t.to_addr} — ${t.purpose}`, parseFloat(t.miles), t.lead_number || '']);
+    rows.push([]);
+  });
+
+  rows.push([]);
+  rows.push(['', '', '', 'DESCRIPTION EXPENSES', '', '']);
+  rExp.forEach(e => rows.push([e.date, '', '', e.description, parseFloat(e.amount), '']));
+  rows.push([]);
+
+  const totalMiles = rTrips.reduce((s, t) => s + parseFloat(t.miles || 0), 0);
+  const totalExp = rExp.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+  rows.push(['', '', '', `NAME: ${empName}`, '', '']);
+  rows.push(['', '', '', 'Total Mileage:', totalMiles, '']);
+  rows.push(['', '', '', 'Total Mileage Reimbursement:', totalMiles * rate, '']);
+  rows.push(['', '', '', 'Total Expenses:', totalExp, '']);
+  rows.push(['', '', '', 'Total Reimbursement:', totalMiles * rate + totalExp, '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 50 }, { wch: 8 }, { wch: 12 }];
+  const [yr, mo] = month.split('-');
+  const label = new Date(yr, mo - 1).toLocaleString('default', { month: 'long' });
+  XLSX.utils.book_append_sheet(wb, ws, 'Mileage & Reimbursement');
+  XLSX.writeFile(wb, `Mileage_${label}_${yr}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════
+// Navigation
+// ══════════════════════════════════════════════════
+function showSection(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-section').classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'report') {
+    document.getElementById('report-name').value = currentUser?.displayName || '';
+    if (!document.getElementById('report-month').value) {
+      document.getElementById('report-month').value = new Date().toISOString().slice(0, 7);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════════════
+async function api(method, url, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include' };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onload = e => resolve(e.target.result);
+    rd.onerror = reject;
+    rd.readAsDataURL(file);
+  });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Keyboard: Enter to login ──
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── Auto-check session on load ──
+(async () => {
+  try {
+    const me = await api('GET', '/api/auth/me');
+    if (me && me.id) { currentUser = { id: me.id, username: me.username, displayName: me.display_name }; await startApp(); }
+  } catch (e) { /* not logged in */ }
+})();
+</script>
+</body>
+</html>

@@ -300,6 +300,119 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Mileage Tracker ─────────────────────────────────────────────────────────
+
+// Settings
+app.get('/api/mileage/settings', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT * FROM mileage_settings WHERE user_id = $1', [req.session.userId]);
+    res.json(r.rows[0] || { rate: 0.70, home_address: '', company: '', dept: '', maps_key: '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/mileage/settings', requireAuth, async (req, res) => {
+  try {
+    const { rate, home_address, company, dept, maps_key } = req.body;
+    await query(`
+      INSERT INTO mileage_settings (user_id, rate, home_address, company, dept, maps_key)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (user_id) DO UPDATE SET
+        rate=EXCLUDED.rate, home_address=EXCLUDED.home_address,
+        company=EXCLUDED.company, dept=EXCLUDED.dept, maps_key=EXCLUDED.maps_key
+    `, [req.session.userId, rate || 0.70, home_address || '', company || '', dept || '', maps_key || '']);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Trips
+app.get('/api/mileage/trips', requireAuth, async (req, res) => {
+  try {
+    const { month } = req.query;
+    const r = month
+      ? await query("SELECT * FROM mileage_trips WHERE user_id=$1 AND date LIKE $2 ORDER BY date,id", [req.session.userId, month + '%'])
+      : await query("SELECT * FROM mileage_trips WHERE user_id=$1 ORDER BY date,id", [req.session.userId]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/trips', requireAuth, async (req, res) => {
+  try {
+    const trips = Array.isArray(req.body) ? req.body : [req.body];
+    const inserted = [];
+    for (const t of trips) {
+      const r = await query(
+        'INSERT INTO mileage_trips (user_id,date,from_addr,to_addr,purpose,lead_number,miles) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        [req.session.userId, t.date, t.from_addr, t.to_addr, t.purpose, t.lead_number || '', parseFloat(t.miles)]
+      );
+      inserted.push(r.rows[0]);
+    }
+    res.json(inserted);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/trips/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_trips WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Expenses
+app.get('/api/mileage/expenses', requireAuth, async (req, res) => {
+  try {
+    const { month } = req.query;
+    const r = month
+      ? await query("SELECT * FROM mileage_expenses WHERE user_id=$1 AND date LIKE $2 ORDER BY date,id", [req.session.userId, month + '%'])
+      : await query("SELECT * FROM mileage_expenses WHERE user_id=$1 ORDER BY date,id", [req.session.userId]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/expenses', requireAuth, async (req, res) => {
+  try {
+    const { date, description, amount, receipt_data, receipt_name, receipt_type } = req.body;
+    const r = await query(
+      'INSERT INTO mileage_expenses (user_id,date,description,amount,receipt_data,receipt_name,receipt_type) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+      [req.session.userId, date, description, parseFloat(amount), receipt_data || null, receipt_name || null, receipt_type || null]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/expenses/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_expenses WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Frequent Sites
+app.get('/api/mileage/sites', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT * FROM mileage_sites WHERE user_id=$1 ORDER BY name', [req.session.userId]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/sites', requireAuth, async (req, res) => {
+  try {
+    const { name, address } = req.body;
+    if (!name || !address) return res.status(400).json({ error: 'Name and address required' });
+    const r = await query(
+      'INSERT INTO mileage_sites (user_id,name,address) VALUES ($1,$2,$3) RETURNING *',
+      [req.session.userId, name.trim(), address.trim()]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/sites/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_sites WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 initDb().then(() => {
