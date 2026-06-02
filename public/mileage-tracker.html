@@ -805,6 +805,7 @@ function pickSite(field) {
     }
   }
   select.value = '';
+  scheduleAutoMiles();
 }
 
 function pickPurpose() {
@@ -1496,11 +1497,13 @@ function scheduleAutoMiles() {
   const from = document.getElementById('trip-from').value.trim();
   const to = document.getElementById('trip-to').value.trim();
   if (from && to) {
-    autoMilesTimer = setTimeout(fetchMiles, 800);
+    autoMilesTimer = setTimeout(fetchMiles, 400);
   }
 }
 document.getElementById('trip-from').addEventListener('blur', scheduleAutoMiles);
 document.getElementById('trip-to').addEventListener('blur', scheduleAutoMiles);
+document.getElementById('trip-from').addEventListener('change', scheduleAutoMiles);
+document.getElementById('trip-to').addEventListener('change', scheduleAutoMiles);
 
 // ── Auto-check session on load ──
 (async () => {
