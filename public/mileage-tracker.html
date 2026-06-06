@@ -318,18 +318,11 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group" style="flex:1;min-width:180px">
-            <label>📋 Saved Job Names</label>
-            <select id="job-name-pick" onchange="pickJobName()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
-              <option value="">— pick saved job —</option>
-            </select>
-          </div>
           <div class="form-group" style="flex:2">
             <label>Job Name</label>
             <div style="display:flex;gap:5px">
-              <input type="text" id="trip-job-name" placeholder="Type or pick above" style="flex:1">
+              <input type="text" id="trip-job-name" placeholder="Auto-filled from Frequent Sites or type" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-job-name')" id="mic-trip-job-name" title="Speak job name">🎤</button>
-              <button class="btn btn-secondary btn-sm" onclick="saveCurrentJobName()" title="Save this job name to your list">💾</button>
             </div>
           </div>
         </div>
@@ -498,16 +491,12 @@
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Save addresses you visit often so you can quickly pick them in the trip form.</p>
           <div class="form-row">
             <div class="form-group" style="flex:1;min-width:130px">
-              <label>Site Name</label>
+              <label>Job Name</label>
               <input type="text" id="new-site-name" placeholder="e.g. Conboy House">
             </div>
             <div class="form-group" style="flex:3">
               <label>Address</label>
               <input type="text" id="new-site-addr" placeholder="Full street address">
-            </div>
-            <div class="form-group" style="flex:2">
-              <label>Job Name (optional)</label>
-              <input type="text" id="new-site-job-name" placeholder="e.g. Conboy CES Job">
             </div>
             <div style="display:flex;align-items:flex-end">
               <button class="btn btn-primary" onclick="addSite()">+ Add Site</button>
@@ -517,23 +506,7 @@
         </div>
       </div>
 
-      <!-- Saved Job Names -->
-      <div class="card">
-        <div class="settings-group" style="margin-bottom:0">
-          <h3>📋 Saved Job Names</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Save job names to quickly pick from a dropdown on the trip form.</p>
-          <div class="form-row">
-            <div class="form-group" style="flex:3">
-              <label>Job Name</label>
-              <input type="text" id="new-job-name-text" placeholder="e.g. Conboy CES, Hascall Job">
-            </div>
-            <div style="display:flex;align-items:flex-end">
-              <button class="btn btn-primary" onclick="addJobName()">+ Add Job Name</button>
-            </div>
-          </div>
-          <div class="site-list" id="job-names-list"></div>
-        </div>
-      </div>
+
 
       <!-- Saved Purposes -->
       <div class="card">
@@ -783,7 +756,7 @@ async function startApp() {
   document.getElementById('trips-filter').value = thisMonth;
   document.getElementById('exp-filter').value = thisMonth;
 
-  await Promise.all([loadSettings(), loadSites(), loadPurposes(), loadJobNames()]);
+  await Promise.all([loadSettings(), loadSites(), loadPurposes()]);
   await Promise.all([loadTrips(), loadExpenses()]);
 }
 
@@ -944,12 +917,10 @@ async function deleteJobName(id) {
 async function addSite() {
   const name = document.getElementById('new-site-name').value.trim();
   const address = document.getElementById('new-site-addr').value.trim();
-  const job_name = document.getElementById('new-site-job-name').value.trim();
-  if (!name || !address) { toast('Enter both a site name and address.'); return; }
-  const s = await api('POST', '/api/mileage/sites', { name, address, job_name });
+  if (!name || !address) { toast('Enter both a Job Name and address.'); return; }
+  const s = await api('POST', '/api/mileage/sites', { name, address });
   document.getElementById('new-site-name').value = '';
   document.getElementById('new-site-addr').value = '';
-  document.getElementById('new-site-job-name').value = '';
   sites.push(s);
   sites.sort((a, b) => a.name.localeCompare(b.name));
   renderSites();
