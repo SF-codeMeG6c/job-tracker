@@ -818,12 +818,25 @@ function updateSiteDropdowns() {
   document.getElementById('pick-to').innerHTML = options;
 }
 
+// Track which address field was last focused
+let lastFocusedAddressField = 'to';
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('trip-from').addEventListener('focus', () => lastFocusedAddressField = 'from');
+  document.getElementById('trip-to').addEventListener('focus', () => lastFocusedAddressField = 'to');
+  // Auto-copy TO address into Location Name whenever it changes
+  document.getElementById('trip-to').addEventListener('input', () => {
+    document.getElementById('trip-job-name').value = document.getElementById('trip-to').value;
+  });
+  document.getElementById('trip-to').addEventListener('change', () => {
+    document.getElementById('trip-job-name').value = document.getElementById('trip-to').value;
+  });
+});
+
 function pickFrequentLocation() {
   const select = document.getElementById('pick-to');
   const val = select.value;
   if (val === '__add__') {
     select.value = '';
-    // Navigate to settings and scroll to Frequent Sites
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     document.getElementById('settings-section').classList.add('active');
@@ -835,8 +848,13 @@ function pickFrequentLocation() {
   if (!siteId) return;
   const site = sites.find(s => s.id === siteId);
   if (site) {
-    document.getElementById('trip-to').value = site.address;
-    document.getElementById('trip-job-name').value = site.address || '';
+    // Fill whichever address field was last focused
+    const targetField = lastFocusedAddressField === 'from' ? 'trip-from' : 'trip-to';
+    document.getElementById(targetField).value = site.address;
+    // If filling TO, also update Location Name
+    if (targetField === 'trip-to') {
+      document.getElementById('trip-job-name').value = site.address;
+    }
     scheduleAutoMiles();
   }
   select.value = '';
