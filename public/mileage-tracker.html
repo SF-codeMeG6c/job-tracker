@@ -320,6 +320,7 @@
             <div style="display:flex;gap:5px">
               <input type="text" id="trip-purpose" placeholder="Type or pick above" style="flex:1">
               <button class="btn-mic" onclick="startDictation('trip-purpose')" id="mic-trip-purpose" title="Speak purpose">🎤</button>
+              <button class="btn btn-secondary btn-sm" onclick="saveCurrentPurpose()" title="Save this purpose to your list">💾</button>
             </div>
           </div>
           <div class="form-group" style="flex:1;min-width:110px">
@@ -434,6 +435,13 @@
       <div id="report-preview">
         <div class="report-toolbar no-print">
           <div class="form-group">
+            <label>Report Type</label>
+            <select id="report-type" style="border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+              <option value="mileage">📋 Mileage &amp; Expense (IRS)</option>
+              <option value="job">🏠 Job Supervision Time</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Month</label>
             <input type="month" id="report-month">
           </div>
@@ -449,7 +457,7 @@
         </div>
         <div class="report-body" id="report-body">
           <div style="color:var(--text-muted);text-align:center;padding:40px;font-style:italic">
-            Select a month and click Generate to preview your report.
+            Select a month and report type, then click Generate.
           </div>
         </div>
       </div>
@@ -944,8 +952,21 @@ function updatePurposeDropdown() {
 async function addPurpose() {
   const text = document.getElementById('new-purpose-text').value.trim();
   if (!text) { toast('Enter a purpose first.'); return; }
-  const p = await api('POST', '/api/mileage/purposes', { purpose_text: text });
+  await savePurposeText(text);
   document.getElementById('new-purpose-text').value = '';
+}
+
+async function saveCurrentPurpose() {
+  const text = document.getElementById('trip-purpose').value.trim();
+  if (!text) { toast('Type a purpose first.'); return; }
+  if (purposes.find(p => p.purpose_text.toLowerCase() === text.toLowerCase())) {
+    toast('Already saved!'); return;
+  }
+  await savePurposeText(text);
+}
+
+async function savePurposeText(text) {
+  const p = await api('POST', '/api/mileage/purposes', { purpose_text: text });
   purposes.push(p);
   purposes.sort((a, b) => a.purpose_text.localeCompare(b.purpose_text));
   renderPurposes();
@@ -1249,133 +1270,226 @@ document.getElementById('receipt-modal').addEventListener('click', e => { if (e.
 async function renderReport() {
   const month = document.getElementById('report-month').value;
   const empName = document.getElementById('report-name').value.trim() || currentUser.displayName || 'EMPLOYEE NAME';
+  const reportType = document.getElementById('report-type').value;
   if (!month) { toast('Please select a month.'); return; }
-
   const [rTrips, rExp] = await Promise.all([
     api('GET', '/api/mileage/trips?month=' + month),
     api('GET', '/api/mileage/expenses?month=' + month)
   ]);
-
   const rate = parseFloat(userSettings.rate) || 0.70;
+  const [yr, mo] = month.split('-');
+  const monthName = new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  if (reportType === 'job') renderJobReport(rTrips, empName, monthName);
+  else renderMileageReport(rTrips, rExp, empName, monthName, rate);
+}
+
+function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
   const totalMiles = rTrips.reduce((s, t) => s + parseFloat(t.miles || 0), 0);
   const mileageReimb = totalMiles * rate;
   const totalExp = rExp.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const grandTotal = mileageReimb + totalExp;
-  const [yr, mo] = month.split('-');
-  const monthName = new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-
   let odo = 0;
-  const tripRows = rTrips.map(t => {
-    const start = odo; const end = odo + parseFloat(t.miles || 0); odo = end;
-    return { ...t, start, end };
-  });
+  const tripRows = rTrips.map(t => { const start = odo; const end = odo + parseFloat(t.miles||0); odo = end; return {...t, start, end}; });
+  const tripHtml = tripRows.length
+    ? tripRows.map(t =>
+        '<tr>' +
+        '<td style="white-space:nowrap">' + fmtDate(t.date) + '</td>' +
+        '<td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(t.from_addr) + '</td>' +
+        '<td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(t.to_addr) + '</td>' +
+        '<td>' + esc(t.job_name||'') + '</td>' +
+        '<td>' + esc(t.purpose||'') + '</td>' +
+        '<td>' + esc(t.description||'') + '</td>' +
+        '<td>' + esc(t.lead_number||'') + '</td>' +
+        '<td style="text-align:right">' + t.start.toFixed(1) + '</td>' +
+        '<td style="text-align:right">' + t.end.toFixed(1) + '</td>' +
+        '<td style="text-align:right;font-weight:600">' + parseFloat(t.miles).toFixed(1) + '</td>' +
+        '</tr>'
+      ).join('')
+    : '<tr><td colspan="10" style="text-align:center;color:#999;font-style:italic;padding:16px">No trips this period</td></tr>';
+  const expHtml = rExp.length
+    ? rExp.map(e =>
+        '<tr><td style="white-space:nowrap">' + fmtDate(e.date) + '</td><td>' + esc(e.description) + '</td>' +
+        '<td style="text-align:right">$' + parseFloat(e.amount).toFixed(2) + '</td></tr>'
+      ).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:#999;font-style:italic">No expenses</td></tr>';
 
-  document.getElementById('report-body').innerHTML = `
-    <div class="report-title-block">
-      <h2>${esc(userSettings.company || 'Mileage & Reimbursement Report')}</h2>
-      <div class="report-meta">
-        <span><strong>Period:</strong> ${monthName}</span>
-        <span><strong>Employee:</strong> ${esc(empName)}</span>
-        ${userSettings.dept ? `<span><strong>Submit To:</strong> ${esc(userSettings.dept)}</span>` : ''}
-        <span><strong>Rate:</strong> $${rate.toFixed(3)}/mile</span>
-      </div>
-    </div>
+  document.getElementById('report-body').innerHTML =
+    '<div class="report-title-block">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
+        '<div>' +
+          '<h2>' + esc(userSettings.company || 'Mileage &amp; Reimbursement Report') + '</h2>' +
+          '<div style="font-size:13px;margin-top:4px;color:#555">IRS Business Mileage Log</div>' +
+        '</div>' +
+        '<div style="border:2px solid var(--primary);border-radius:6px;padding:8px 16px;text-align:right">' +
+          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Employee</div>' +
+          '<div style="font-size:16px;font-weight:700;color:var(--primary)">' + esc(empName) + '</div>' +
+          '<div style="font-size:12px;color:#555">' + monthName + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="report-meta" style="margin-top:10px">' +
+        (userSettings.dept ? '<span><strong>Submit To:</strong> ' + esc(userSettings.dept) + '</span>' : '') +
+        '<span><strong>Mileage Rate:</strong> $' + rate.toFixed(3) + '/mile (IRS Standard)</span>' +
+      '</div>' +
+    '</div>' +
+    '<table class="print-table">' +
+      '<thead><tr>' +
+        '<th>Date</th><th>Starting Point</th><th>Destination</th><th>Job Name</th>' +
+        '<th>Business Purpose</th><th>Description</th><th>Lead #</th>' +
+        '<th style="text-align:right">Odo Start</th><th style="text-align:right">Odo End</th>' +
+        '<th style="text-align:right">Miles</th>' +
+      '</tr></thead>' +
+      '<tbody>' + tripHtml + '</tbody>' +
+      '<tfoot><tr><td colspan="9" style="text-align:right">Total Business Miles:</td>' +
+        '<td style="text-align:right">' + totalMiles.toFixed(1) + '</td></tr></tfoot>' +
+    '</table>' +
+    '<div class="totals-grid">' +
+      '<div class="totals-box">' +
+        '<div class="totals-box-title">Expenses</div>' +
+        '<table><tbody>' + expHtml + '</tbody>' +
+        '<tfoot><tr><td colspan="2" style="text-align:right">Total Expenses:</td>' +
+          '<td style="text-align:right">$' + totalExp.toFixed(2) + '</td></tr></tfoot></table>' +
+      '</div>' +
+      '<div>' +
+        '<div class="summary-box">' +
+          '<div class="summary-line"><span>Total Business Miles:</span><span>' + totalMiles.toFixed(1) + '</span></div>' +
+          '<div class="summary-line"><span>x IRS Rate ($' + rate.toFixed(3) + '/mi):</span><span>$' + mileageReimb.toFixed(2) + '</span></div>' +
+          '<div class="summary-line"><span>Expenses:</span><span>$' + totalExp.toFixed(2) + '</span></div>' +
+          '<div class="summary-total"><span>TOTAL REIMBURSEMENT:</span><span>$' + grandTotal.toFixed(2) + '</span></div>' +
+        '</div>' +
+        '<div style="margin-top:24px">' +
+          '<div style="border-top:1px solid #000;padding-top:6px;margin-bottom:16px">' +
+            '<div style="font-size:11px;color:#555">Employee Signature</div>' +
+            '<div style="font-size:13px;font-weight:700">' + esc(empName) + '</div>' +
+          '</div>' +
+          '<div style="border-top:1px solid #000;padding-top:6px">' +
+            '<div style="font-size:11px;color:#555">Approved By</div>' +
+            '<div style="font-size:13px">&nbsp;</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
 
-    <table class="print-table">
-      <thead><tr>
-        <th>Date</th><th>Start</th><th>End</th><th>Address — Purpose</th><th>Lead #</th>
-        <th style="text-align:right">Miles</th>
-      </tr></thead>
-      <tbody>
-        ${tripRows.length ? tripRows.map(t => `
-          <tr>
-            <td>${fmtDate(t.date)}</td>
-            <td>${t.start.toFixed(1)}</td>
-            <td>${t.end.toFixed(1)}</td>
-            <td>${esc(t.to_addr + (t.purpose ? ' — ' + t.purpose : ''))}</td>
-            <td>${esc(t.lead_number || '')}</td>
-            <td style="text-align:right">${parseFloat(t.miles).toFixed(1)}</td>
-          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:#999;font-style:italic;padding:16px">No trips this period</td></tr>'}
-      </tbody>
-      <tfoot><tr>
-        <td colspan="5" style="text-align:right">Total Mileage:</td>
-        <td style="text-align:right">${totalMiles.toFixed(1)}</td>
-      </tr></tfoot>
-    </table>
+function renderJobReport(rTrips, empName, monthName) {
+  const jobs = {};
+  rTrips.forEach(t => { const k = t.job_name || '(No Job Name)'; if (!jobs[k]) jobs[k] = []; jobs[k].push(t); });
+  const jobKeys = Object.keys(jobs).sort();
+  let grandDrive = 0, grandSite = 0;
 
-    <div class="totals-grid">
-      <div class="totals-box">
-        <div class="totals-box-title">Description — Expenses</div>
-        <table><tbody>
-          ${rExp.length ? rExp.map(e => `
-            <tr>
-              <td>${fmtDate(e.date)}</td>
-              <td>${esc(e.description)}</td>
-              <td style="text-align:right">$${parseFloat(e.amount).toFixed(2)}</td>
-            </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:#999;font-style:italic">No expenses</td></tr>'}
-        </tbody>
-        <tfoot><tr>
-          <td colspan="2" style="text-align:right">Total Expenses:</td>
-          <td style="text-align:right">$${totalExp.toFixed(2)}</td>
-        </tr></tfoot></table>
-      </div>
+  const jobSections = jobKeys.map(jobName => {
+    const jt = jobs[jobName];
+    const d = jt.reduce((s, t) => s + (parseInt(t.drive_time)||0), 0);
+    const si = jt.reduce((s, t) => s + (parseInt(t.site_time)||0), 0);
+    grandDrive += d; grandSite += si;
+    const rows = jt.map(t =>
+      '<tr>' +
+      '<td style="white-space:nowrap">' + fmtDate(t.date) + '</td>' +
+      '<td>' + esc(t.purpose||'') + (t.description ? ' — ' + esc(t.description) : '') + '</td>' +
+      '<td style="text-align:right">' + (parseInt(t.drive_time)||0) + '</td>' +
+      '<td style="text-align:right">' + (parseInt(t.site_time)||0) + '</td>' +
+      '<td style="text-align:right;font-weight:600">' + ((parseInt(t.drive_time)||0)+(parseInt(t.site_time)||0)) + '</td>' +
+      '</tr>'
+    ).join('');
+    return '<div style="margin-bottom:20px">' +
+      '<div style="background:var(--primary);color:#fff;padding:7px 12px;border-radius:5px 5px 0 0;font-weight:700">' + esc(jobName) + '</div>' +
+      '<table class="print-table" style="margin-bottom:0">' +
+        '<thead><tr><th>Date</th><th>Purpose / Description</th>' +
+          '<th style="text-align:right">Drive (min)</th>' +
+          '<th style="text-align:right">On Site (min)</th>' +
+          '<th style="text-align:right">Total (min)</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '<tfoot><tr><td colspan="2" style="text-align:right;font-weight:700">Job Total:</td>' +
+          '<td style="text-align:right;font-weight:700">' + d + '</td>' +
+          '<td style="text-align:right;font-weight:700">' + si + '</td>' +
+          '<td style="text-align:right;font-weight:700">' + (d+si) + ' min (' + ((d+si)/60).toFixed(1) + ' hrs)</td></tr></tfoot>' +
+      '</table></div>';
+  }).join('');
 
-      <div>
-        <div class="summary-box">
-          <div class="summary-line"><span>Total Mileage:</span><span>${totalMiles.toFixed(1)} miles</span></div>
-          <div class="summary-line"><span>Mileage Reimbursement (${totalMiles.toFixed(1)} × $${rate.toFixed(3)}):</span><span>$${mileageReimb.toFixed(2)}</span></div>
-          <div class="summary-line"><span>Expenses:</span><span>$${totalExp.toFixed(2)}</span></div>
-          <div class="summary-total"><span>TOTAL REIMBURSEMENT:</span><span>$${grandTotal.toFixed(2)}</span></div>
-        </div>
-        <div style="margin-top:30px;border-top:1px solid #000;padding-top:6px;font-size:12px;color:#555">
-          <strong>NAME: ${esc(empName)}</strong><br>
-          <small>Mileage &amp; Reimbursement Form — ${monthName}</small>
-        </div>
-      </div>
-    </div>
-  `;
+  const gt = grandDrive + grandSite;
+  document.getElementById('report-body').innerHTML =
+    '<div class="report-title-block">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
+        '<div>' +
+          '<h2>' + esc(userSettings.company || 'Job Supervision Time Report') + '</h2>' +
+          '<div style="font-size:13px;color:#555">Drive &amp; On-Site Time by Job</div>' +
+        '</div>' +
+        '<div style="border:2px solid var(--primary);border-radius:6px;padding:8px 16px;text-align:right">' +
+          '<div style="font-size:11px;text-transform:uppercase;color:var(--text-muted)">Employee</div>' +
+          '<div style="font-size:16px;font-weight:700;color:var(--primary)">' + esc(empName) + '</div>' +
+          '<div style="font-size:12px;color:#555">' + monthName + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    (jobKeys.length ? jobSections : '<div style="text-align:center;color:#999;font-style:italic;padding:32px">No trips with job names this period.</div>') +
+    '<div class="summary-box" style="margin-top:16px">' +
+      '<div class="summary-line"><span>Total Drive Time:</span><span>' + grandDrive + ' min (' + (grandDrive/60).toFixed(1) + ' hrs)</span></div>' +
+      '<div class="summary-line"><span>Total On-Site Time:</span><span>' + grandSite + ' min (' + (grandSite/60).toFixed(1) + ' hrs)</span></div>' +
+      '<div class="summary-total"><span>TOTAL SUPERVISION TIME:</span><span>' + gt + ' min (' + (gt/60).toFixed(1) + ' hrs)</span></div>' +
+    '</div>' +
+    '<div style="margin-top:24px;display:flex;gap:32px">' +
+      '<div style="flex:1;border-top:1px solid #000;padding-top:6px"><div style="font-size:11px;color:#555">Employee Signature &amp; Date</div><div style="font-weight:700;margin-top:2px">' + esc(empName) + '</div></div>' +
+      '<div style="flex:1;border-top:1px solid #000;padding-top:6px"><div style="font-size:11px;color:#555">Approved By &amp; Date</div><div style="margin-top:2px">&nbsp;</div></div>' +
+    '</div>';
 }
 
 async function exportExcel() {
   const month = document.getElementById('report-month').value;
   const empName = document.getElementById('report-name').value.trim() || currentUser.displayName || 'EMPLOYEE NAME';
   if (!month) { toast('Select a month first.'); return; }
-
   const [rTrips, rExp] = await Promise.all([
     api('GET', '/api/mileage/trips?month=' + month),
     api('GET', '/api/mileage/expenses?month=' + month)
   ]);
-
   const rate = parseFloat(userSettings.rate) || 0.70;
+  const [yr, mo] = month.split('-');
+  const label = new Date(yr, mo-1).toLocaleString('default', {month:'long'});
   const wb = XLSX.utils.book_new();
-  const rows = [['Date', 'Start', 'End', 'ADDRESS - PURPOSE', 'Miles', 'Lead Number']];
 
   let odo = 0;
+  const mRows = [
+    [userSettings.company || 'Mileage & Reimbursement Report — IRS Business Mileage Log'],
+    ['Employee: ' + empName, '', '', '', '', '', '', '', '', 'Period: ' + label + ' ' + yr],
+    [],
+    ['Date','Starting Point','Destination','Job Name','Business Purpose','Description','Lead #','Odo Start','Odo End','Miles']
+  ];
   rTrips.forEach(t => {
-    const start = odo; const end = odo + parseFloat(t.miles || 0); odo = end;
-    rows.push([t.date, +start.toFixed(1), +end.toFixed(1), `${t.to_addr} — ${t.purpose}`, parseFloat(t.miles), t.lead_number || '']);
-    rows.push([]);
+    const s = odo; const e = odo + parseFloat(t.miles||0); odo = e;
+    mRows.push([t.date, t.from_addr, t.to_addr, t.job_name||'', t.purpose||'', t.description||'', t.lead_number||'', +s.toFixed(1), +e.toFixed(1), parseFloat(t.miles)]);
   });
+  const tm = rTrips.reduce((s,t) => s+parseFloat(t.miles||0), 0);
+  const te = rExp.reduce((s,e) => s+parseFloat(e.amount||0), 0);
+  mRows.push([]); mRows.push(['','','','','','','','','Total Business Miles:', tm]);
+  mRows.push([]); mRows.push(['EXPENSES']); mRows.push(['Date','Description','Amount']);
+  rExp.forEach(e => mRows.push([e.date, e.description, parseFloat(e.amount)]));
+  mRows.push(['','Total Expenses:', te]);
+  mRows.push([]); mRows.push(['','','','','','','','','Mileage Reimbursement:', tm*rate]);
+  mRows.push(['','','','','','','','','Expenses:', te]);
+  mRows.push(['','','','','','','','','TOTAL REIMBURSEMENT:', tm*rate+te]);
+  const ws1 = XLSX.utils.aoa_to_sheet(mRows);
+  ws1['!cols'] = [{wch:12},{wch:26},{wch:26},{wch:16},{wch:20},{wch:20},{wch:10},{wch:10},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Mileage Report');
 
-  rows.push([]);
-  rows.push(['', '', '', 'DESCRIPTION EXPENSES', '', '']);
-  rExp.forEach(e => rows.push([e.date, '', '', e.description, parseFloat(e.amount), '']));
-  rows.push([]);
+  const jobs = {};
+  rTrips.forEach(t => { const k = t.job_name||'(No Job)'; if(!jobs[k]) jobs[k]=[]; jobs[k].push(t); });
+  const jRows = [
+    ['Job Supervision Time Report — ' + label + ' ' + yr],
+    ['Employee: ' + empName],
+    [],
+    ['Job Name','Date','Purpose','Description','Drive Time (min)','Time on Site (min)','Total (min)']
+  ];
+  let gd=0, gs=0;
+  Object.keys(jobs).sort().forEach(jn => {
+    jobs[jn].forEach(t => { const d=parseInt(t.drive_time)||0, s=parseInt(t.site_time)||0; gd+=d; gs+=s; jRows.push([jn,t.date,t.purpose||'',t.description||'',d,s,d+s]); });
+    const jd = jobs[jn].reduce((s,t)=>s+(parseInt(t.drive_time)||0),0);
+    const js2 = jobs[jn].reduce((s,t)=>s+(parseInt(t.site_time)||0),0);
+    jRows.push(['', jn+' TOTAL:','','',jd,js2,jd+js2]); jRows.push([]);
+  });
+  jRows.push(['GRAND TOTAL','','','',gd,gs,gd+gs]);
+  const ws2 = XLSX.utils.aoa_to_sheet(jRows);
+  ws2['!cols'] = [{wch:18},{wch:12},{wch:20},{wch:24},{wch:14},{wch:16},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Job Supervision');
 
-  const totalMiles = rTrips.reduce((s, t) => s + parseFloat(t.miles || 0), 0);
-  const totalExp = rExp.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
-  rows.push(['', '', '', `NAME: ${empName}`, '', '']);
-  rows.push(['', '', '', 'Total Mileage:', totalMiles, '']);
-  rows.push(['', '', '', 'Total Mileage Reimbursement:', totalMiles * rate, '']);
-  rows.push(['', '', '', 'Total Expenses:', totalExp, '']);
-  rows.push(['', '', '', 'Total Reimbursement:', totalMiles * rate + totalExp, '']);
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 50 }, { wch: 8 }, { wch: 12 }];
-  const [yr, mo] = month.split('-');
-  const label = new Date(yr, mo - 1).toLocaleString('default', { month: 'long' });
-  XLSX.utils.book_append_sheet(wb, ws, 'Mileage & Reimbursement');
-  XLSX.writeFile(wb, `Mileage_${label}_${yr}.xlsx`);
+  XLSX.writeFile(wb, 'Report_' + label + '_' + yr + '.xlsx');
 }
 
 // ══════════════════════════════════════════════════
