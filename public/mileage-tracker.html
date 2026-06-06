@@ -1379,7 +1379,7 @@ function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
 
 function renderJobReport(rTrips, empName, monthName) {
   const jobs = {};
-  rTrips.forEach(t => { const k = t.job_name || '(No Job Name)'; if (!jobs[k]) jobs[k] = []; jobs[k].push(t); });
+  rTrips.forEach(t => { const k = t.job_name || '(No Location Name)'; if (!jobs[k]) jobs[k] = []; jobs[k].push(t); });
   const jobKeys = Object.keys(jobs).sort();
   let grandDrive = 0, grandSite = 0;
 
@@ -1417,8 +1417,8 @@ function renderJobReport(rTrips, empName, monthName) {
     '<div class="report-title-block">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
         '<div>' +
-          '<h2>' + esc(userSettings.company || 'Job Supervision Time Report') + '</h2>' +
-          '<div style="font-size:13px;color:#555">Drive &amp; On-Site Time by Job</div>' +
+          '<h2>' + esc(userSettings.company || 'Location Supervision Time Report') + '</h2>' +
+          '<div style="font-size:13px;color:#555">Drive &amp; On-Site Time by Location Name</div>' +
         '</div>' +
         '<div style="border:2px solid var(--primary);border-radius:6px;padding:8px 16px;text-align:right">' +
           '<div style="font-size:11px;text-transform:uppercase;color:var(--text-muted)">Employee</div>' +
@@ -1475,17 +1475,17 @@ async function exportExcel() {
   const jobs = {};
   rTrips.forEach(t => { const k = t.job_name||'(No Job)'; if(!jobs[k]) jobs[k]=[]; jobs[k].push(t); });
   const jRows = [
-    ['Job Supervision Time Report — ' + label + ' ' + yr],
+    ['Location Supervision Time Report — ' + label + ' ' + yr],
     ['Employee: ' + empName],
     [],
-    ['Job Name','Date','Purpose','Description','Drive Time (min)','Time on Site (min)','Total (min)']
+    ['Location Name','Date','Purpose','Description','Drive Time (min)','Time on Site (min)','Total (min)']
   ];
   let gd=0, gs=0;
   Object.keys(jobs).sort().forEach(jn => {
     jobs[jn].forEach(t => { const d=parseInt(t.drive_time)||0, s=parseInt(t.site_time)||0; gd+=d; gs+=s; jRows.push([jn,t.date,t.purpose||'',t.description||'',d,s,d+s]); });
     const jd = jobs[jn].reduce((s,t)=>s+(parseInt(t.drive_time)||0),0);
     const js2 = jobs[jn].reduce((s,t)=>s+(parseInt(t.site_time)||0),0);
-    jRows.push(['', jn+' TOTAL:','','',jd,js2,jd+js2]); jRows.push([]);
+    jRows.push(['', 'TOTAL — '+jn+':','','',jd,js2,jd+js2]); jRows.push([]);
   });
   jRows.push(['GRAND TOTAL','','','',gd,gs,gd+gs]);
   const ws2 = XLSX.utils.aoa_to_sheet(jRows);
