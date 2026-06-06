@@ -461,7 +461,7 @@
           </div>
           <div class="form-group">
             <label>Month</label>
-            <input type="month" id="report-month">
+            <input type="month" id="report-month" onchange="loadLocationFilterOptions()">
           </div>
           <div class="form-group" id="location-filter-group" style="display:none">
             <label>Filter by Location</label>
@@ -1292,6 +1292,14 @@ document.getElementById('receipt-modal').addEventListener('click', e => { if (e.
 function onReportTypeChange() {
   const type = document.getElementById('report-type').value;
   document.getElementById('location-filter-group').style.display = type === 'job' ? 'block' : 'none';
+  if (type === 'job') loadLocationFilterOptions();
+}
+
+async function loadLocationFilterOptions() {
+  const month = document.getElementById('report-month').value;
+  if (!month) return;
+  const trips = await api('GET', '/api/mileage/trips?month=' + month);
+  await populateLocationFilter(trips);
 }
 
 async function populateLocationFilter(trips) {
