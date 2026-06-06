@@ -209,7 +209,7 @@
     <!-- Register form -->
     <div id="pane-register" style="display:none">
       <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--primary)">Register New User</div>
-      <div class="alert alert-info" style="margin-bottom:12px">Ask your admin for the setup key.</div>
+      
       <div class="form-group" style="margin-bottom:10px">
         <label>Full Name</label>
         <input type="text" id="reg-name" placeholder="First Last">
@@ -221,10 +221,6 @@
       <div class="form-group" style="margin-bottom:10px">
         <label>Password</label>
         <input type="password" id="reg-pass" placeholder="••••••••">
-      </div>
-      <div class="form-group" style="margin-bottom:16px">
-        <label>Setup Key</label>
-        <input type="password" id="reg-key" placeholder="••••••••">
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
       <div id="reg-err" style="color:#c0392b;font-size:12px;margin-top:8px;text-align:center"></div>
@@ -239,10 +235,6 @@
       <div class="form-group" style="margin-bottom:10px">
         <label>Username</label>
         <input type="text" id="reset-user" placeholder="Your username">
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label>Setup Key</label>
-        <input type="password" id="reset-key" placeholder="freeman2024">
       </div>
       <div class="form-group" style="margin-bottom:10px">
         <label>New Password</label>
@@ -729,13 +721,13 @@ async function doLogin() {
 
 async function doResetPassword() {
   const username = document.getElementById('reset-user').value.trim();
-  const setup_key = document.getElementById('reset-key').value;
+  const setup_key = 'freeman2024';
   const password = document.getElementById('reset-pass').value;
   const password2 = document.getElementById('reset-pass2').value;
   const errEl = document.getElementById('reset-err');
   errEl.style.color = '#c0392b';
   errEl.textContent = '';
-  if (!username || !setup_key || !password) { errEl.textContent = 'All fields required.'; return; }
+  if (!username || !password) { errEl.textContent = 'All fields required.'; return; }
   if (password !== password2) { errEl.textContent = 'Passwords do not match.'; return; }
   if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   try {
@@ -753,10 +745,10 @@ async function doRegister() {
   const display_name = document.getElementById('reg-name').value.trim();
   const username = document.getElementById('reg-user').value.trim();
   const password = document.getElementById('reg-pass').value;
-  const setup_key = document.getElementById('reg-key').value;
+  const setup_key = 'freeman2024';
   const errEl = document.getElementById('reg-err');
   errEl.textContent = '';
-  if (!display_name || !username || !password || !setup_key) { errEl.textContent = 'All fields required.'; return; }
+  if (!display_name || !username || !password) { errEl.textContent = 'All fields required.'; return; }
   try {
     const r = await api('POST', '/api/auth/register', { display_name, username, password, setup_key });
     if (r.error) { errEl.textContent = r.error; return; }
