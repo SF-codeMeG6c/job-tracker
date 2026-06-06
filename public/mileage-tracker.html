@@ -1356,16 +1356,7 @@ function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
           '<div class="summary-line"><span>Expenses:</span><span>$' + totalExp.toFixed(2) + '</span></div>' +
           '<div class="summary-total"><span>TOTAL REIMBURSEMENT:</span><span>$' + grandTotal.toFixed(2) + '</span></div>' +
         '</div>' +
-        '<div style="margin-top:24px">' +
-          '<div style="border-top:1px solid #000;padding-top:6px;margin-bottom:16px">' +
-            '<div style="font-size:11px;color:#555">Employee Signature</div>' +
-            '<div style="font-size:13px;font-weight:700">' + esc(empName) + '</div>' +
-          '</div>' +
-          '<div style="border-top:1px solid #000;padding-top:6px">' +
-            '<div style="font-size:11px;color:#555">Approved By</div>' +
-            '<div style="font-size:13px">&nbsp;</div>' +
-          '</div>' +
-        '</div>' +
+
       '</div>' +
     '</div>';
 }
@@ -1426,10 +1417,7 @@ function renderJobReport(rTrips, empName, monthName) {
       '<div class="summary-line"><span>Total On-Site Time:</span><span>' + grandSite + ' min (' + (grandSite/60).toFixed(1) + ' hrs)</span></div>' +
       '<div class="summary-total"><span>TOTAL SUPERVISION TIME:</span><span>' + gt + ' min (' + (gt/60).toFixed(1) + ' hrs)</span></div>' +
     '</div>' +
-    '<div style="margin-top:24px;display:flex;gap:32px">' +
-      '<div style="flex:1;border-top:1px solid #000;padding-top:6px"><div style="font-size:11px;color:#555">Employee Signature &amp; Date</div><div style="font-weight:700;margin-top:2px">' + esc(empName) + '</div></div>' +
-      '<div style="flex:1;border-top:1px solid #000;padding-top:6px"><div style="font-size:11px;color:#555">Approved By &amp; Date</div><div style="margin-top:2px">&nbsp;</div></div>' +
-    '</div>';
+;
 }
 
 async function exportExcel() {
