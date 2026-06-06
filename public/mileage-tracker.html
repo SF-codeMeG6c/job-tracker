@@ -836,7 +836,7 @@ function pickFrequentLocation() {
   const site = sites.find(s => s.id === siteId);
   if (site) {
     document.getElementById('trip-to').value = site.address;
-    document.getElementById('trip-job-name').value = site.name || '';
+    document.getElementById('trip-job-name').value = site.address || '';
     scheduleAutoMiles();
   }
   select.value = '';
