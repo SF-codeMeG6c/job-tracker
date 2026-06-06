@@ -828,9 +828,7 @@ function pickSite(field) {
   const site = sites.find(s => s.id === siteId);
   if (site) {
     document.getElementById('trip-' + field).value = site.address;
-    if (site.job_name && !document.getElementById('trip-job-name').value) {
-      document.getElementById('trip-job-name').value = site.job_name;
-    }
+    document.getElementById('trip-job-name').value = site.name || '';
   }
   select.value = '';
   scheduleAutoMiles();
