@@ -701,7 +701,8 @@ function switchLoginTab(tab) {
   document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.login-tab-pane').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  event.currentTarget.classList.add('active');
+  const tabEl = document.querySelector('.login-tab[onclick*="' + tab + '"]');
+  if (tabEl) tabEl.classList.add('active');
 }
 
 async function doLogin() {
@@ -735,7 +736,7 @@ async function doResetPassword() {
     errEl.textContent = '✓ Password reset! You can now sign in.';
     document.getElementById('login-user').value = username;
     document.getElementById('login-pass').value = '';
-    setTimeout(() => { switchLoginTab('signin'); document.querySelector('.login-tab').click(); }, 1500);
+    setTimeout(() => switchLoginTab('signin'), 1500);
   } catch (e) { errEl.textContent = 'Reset failed. Check connection.'; }
 }
 
@@ -752,7 +753,7 @@ async function doRegister() {
     if (r.error) { errEl.textContent = r.error; return; }
     document.getElementById('login-user').value = username;
     document.getElementById('login-pass').value = password;
-    switchLoginTab('signin'); document.querySelector('.login-tab').click();
+    switchLoginTab('signin');
     toast('Account created! Sign in now.');
   } catch (e) { errEl.textContent = 'Registration failed.'; }
 }
