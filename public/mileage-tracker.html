@@ -280,21 +280,12 @@
       <div class="card">
         <div class="card-title">Add Trip</div>
 
-        <!-- Frequent site pickers -->
-        <div class="site-pick-row">
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent From</div>
-            <select id="pick-from" onchange="pickSite('from')">
-              <option value="">— pick saved site —</option>
-            </select>
-          </div>
-          <div class="arrow">→</div>
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent To</div>
-            <select id="pick-to" onchange="pickSite('to')">
-              <option value="">— pick saved site —</option>
-            </select>
-          </div>
+        <!-- Frequent Locations picker -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent Locations</div>
+          <select id="pick-to" onchange="pickFrequentLocation()" style="width:100%;max-width:400px;border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;background:#fff">
+            <option value="">— pick a saved location —</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -821,10 +812,34 @@ function renderSites() {
 }
 
 function updateSiteDropdowns() {
-  const options = '<option value="">— pick saved site —</option>' +
-    sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
-  document.getElementById('pick-from').innerHTML = options;
+  const options = '<option value="">— pick a saved location —</option>' +
+    sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') +
+    '<option value="__add__">➕ Add a Location...</option>';
   document.getElementById('pick-to').innerHTML = options;
+}
+
+function pickFrequentLocation() {
+  const select = document.getElementById('pick-to');
+  const val = select.value;
+  if (val === '__add__') {
+    select.value = '';
+    // Navigate to settings and scroll to Frequent Sites
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('settings-section').classList.add('active');
+    document.querySelector('nav button[onclick*="settings"]').classList.add('active');
+    setTimeout(() => document.getElementById('new-site-name').scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    return;
+  }
+  const siteId = parseInt(val);
+  if (!siteId) return;
+  const site = sites.find(s => s.id === siteId);
+  if (site) {
+    document.getElementById('trip-to').value = site.address;
+    document.getElementById('trip-job-name').value = site.name || '';
+    scheduleAutoMiles();
+  }
+  select.value = '';
 }
 
 function pickSite(field) {
