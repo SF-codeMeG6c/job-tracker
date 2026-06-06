@@ -1336,11 +1336,17 @@ async function loadLocationFilterOptions() {
 }
 
 async function populateLocationFilter(trips) {
-  const locations = [...new Set(trips.map(t => t.job_name).filter(Boolean))].sort();
+  // Build unique location map: job_name -> latest to_addr
+  const locMap = {};
+  trips.filter(t => t.job_name).forEach(t => { locMap[t.job_name] = t.to_addr || ''; });
+  const locations = Object.keys(locMap).sort();
   const sel = document.getElementById('report-location-filter');
   const current = sel.value;
   sel.innerHTML = '<option value="">— All Locations —</option>' +
-    locations.map(l => `<option value="${esc(l)}" ${l === current ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    locations.map(l => {
+      const addr = locMap[l] && locMap[l] !== l ? ' — ' + locMap[l] : '';
+      return `<option value="${esc(l)}" ${l === current ? 'selected' : ''}>${esc(l)}${esc(addr)}</option>`;
+    }).join('');
 }
 
 async function renderReport() {
