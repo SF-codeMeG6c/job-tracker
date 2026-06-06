@@ -454,7 +454,7 @@
         <div class="report-toolbar no-print">
           <div class="form-group">
             <label>Report Type</label>
-            <select id="report-type" style="border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+            <select id="report-type" style="border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff" onchange="onReportTypeChange()">
               <option value="mileage">📋 Mileage &amp; Expense (IRS)</option>
               <option value="job">🏠 Job Supervision Time</option>
             </select>
@@ -462,6 +462,12 @@
           <div class="form-group">
             <label>Month</label>
             <input type="month" id="report-month">
+          </div>
+          <div class="form-group" id="location-filter-group" style="display:none">
+            <label>Filter by Location</label>
+            <select id="report-location-filter" style="border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
+              <option value="">— All Locations —</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Employee Name</label>
@@ -1283,6 +1289,19 @@ document.getElementById('receipt-modal').addEventListener('click', e => { if (e.
 // ══════════════════════════════════════════════════
 // Report
 // ══════════════════════════════════════════════════
+function onReportTypeChange() {
+  const type = document.getElementById('report-type').value;
+  document.getElementById('location-filter-group').style.display = type === 'job' ? 'block' : 'none';
+}
+
+async function populateLocationFilter(trips) {
+  const locations = [...new Set(trips.map(t => t.job_name).filter(Boolean))].sort();
+  const sel = document.getElementById('report-location-filter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— All Locations —</option>' +
+    locations.map(l => `<option value="${esc(l)}" ${l === current ? 'selected' : ''}>${esc(l)}</option>`).join('');
+}
+
 async function renderReport() {
   const month = document.getElementById('report-month').value;
   const empName = document.getElementById('report-name').value.trim() || currentUser.displayName || 'EMPLOYEE NAME';
@@ -1295,8 +1314,14 @@ async function renderReport() {
   const rate = parseFloat(userSettings.rate) || 0.70;
   const [yr, mo] = month.split('-');
   const monthName = new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-  if (reportType === 'job') renderJobReport(rTrips, empName, monthName);
-  else renderMileageReport(rTrips, rExp, empName, monthName, rate);
+  if (reportType === 'job') {
+    await populateLocationFilter(rTrips);
+    const locFilter = document.getElementById('report-location-filter').value;
+    const filteredTrips = locFilter ? rTrips.filter(t => t.job_name === locFilter) : rTrips;
+    renderJobReport(filteredTrips, empName, monthName, locFilter);
+  } else {
+    renderMileageReport(rTrips, rExp, empName, monthName, rate);
+  }
 }
 
 function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
@@ -1377,7 +1402,7 @@ function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
     '</div>';
 }
 
-function renderJobReport(rTrips, empName, monthName) {
+function renderJobReport(rTrips, empName, monthName, locationFilter) {
   const jobs = {};
   rTrips.forEach(t => { const k = t.job_name || '(No Location Name)'; if (!jobs[k]) jobs[k] = []; jobs[k].push(t); });
   const jobKeys = Object.keys(jobs).sort();
@@ -1418,7 +1443,7 @@ function renderJobReport(rTrips, empName, monthName) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
         '<div>' +
           '<h2>' + esc(userSettings.company || 'Location Supervision Time Report') + '</h2>' +
-          '<div style="font-size:13px;color:#555">Drive &amp; On-Site Time by Location Name</div>' +
+          '<div style="font-size:13px;color:#555">' + (locationFilter ? 'Location: <strong>' + esc(locationFilter) + '</strong>' : 'Drive &amp; On-Site Time by Location Name') + '</div>' +
         '</div>' +
         '<div style="border:2px solid var(--primary);border-radius:6px;padding:8px 16px;text-align:right">' +
           '<div style="font-size:11px;text-transform:uppercase;color:var(--text-muted)">Employee</div>' +
