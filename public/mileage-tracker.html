@@ -189,7 +189,8 @@
     <div class="login-sub">Sign in to your account</div>
     <div class="login-tabs">
       <div class="login-tab active" onclick="switchLoginTab('signin')">Sign In</div>
-      <div class="login-tab" onclick="switchLoginTab('register')">Register New User</div>
+      <div class="login-tab" onclick="switchLoginTab('register')">Register</div>
+      <div class="login-tab" onclick="switchLoginTab('reset')">Reset Password</div>
     </div>
 
     <div id="tab-signin" class="login-tab-pane active">
@@ -225,6 +226,28 @@
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
       <div id="reg-err" style="color:#c0392b;font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+
+    <div id="tab-reset" class="login-tab-pane">
+      <div class="alert alert-info" style="margin-bottom:12px">Enter your username, setup key, and a new password.</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Username</label>
+        <input type="text" id="reset-user" placeholder="Your username">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Setup Key</label>
+        <input type="password" id="reset-key" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>New Password</label>
+        <input type="password" id="reset-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Confirm New Password</label>
+        <input type="password" id="reset-pass2" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doResetPassword()">Reset Password</button>
+      <div id="reset-err" style="font-size:12px;margin-top:8px;text-align:center"></div>
     </div>
   </div>
 </div>
@@ -692,6 +715,28 @@ async function doLogin() {
     currentUser = r;
     await startApp();
   } catch (e) { errEl.textContent = 'Login failed. Check server connection.'; }
+}
+
+async function doResetPassword() {
+  const username = document.getElementById('reset-user').value.trim();
+  const setup_key = document.getElementById('reset-key').value;
+  const password = document.getElementById('reset-pass').value;
+  const password2 = document.getElementById('reset-pass2').value;
+  const errEl = document.getElementById('reset-err');
+  errEl.style.color = '#c0392b';
+  errEl.textContent = '';
+  if (!username || !setup_key || !password) { errEl.textContent = 'All fields required.'; return; }
+  if (password !== password2) { errEl.textContent = 'Passwords do not match.'; return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  try {
+    const r = await api('POST', '/api/auth/reset-password', { username, setup_key, password });
+    if (r.error) { errEl.textContent = r.error; return; }
+    errEl.style.color = '#1a7a4a';
+    errEl.textContent = '✓ Password reset! You can now sign in.';
+    document.getElementById('login-user').value = username;
+    document.getElementById('login-pass').value = '';
+    setTimeout(() => { switchLoginTab('signin'); document.querySelector('.login-tab').click(); }, 1500);
+  } catch (e) { errEl.textContent = 'Reset failed. Check connection.'; }
 }
 
 async function doRegister() {

@@ -61,6 +61,18 @@ app.get('/api/auth/me', async (req, res) => {
   } catch (e) { res.json(null); }
 });
 
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { username, password, setup_key } = req.body;
+    if (setup_key !== (process.env.SETUP_KEY || 'freeman2024')) return res.status(403).json({ error: 'Invalid setup key' });
+    const existing = await query('SELECT id FROM users WHERE username = $1', [username]);
+    if (!existing.rows.length) return res.status(404).json({ error: 'Username not found' });
+    const hash = bcrypt.hashSync(password, 10);
+    await query('UPDATE users SET password_hash = $1 WHERE username = $2', [hash, username]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, display_name, setup_key } = req.body;
