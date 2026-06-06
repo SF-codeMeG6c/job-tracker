@@ -1000,8 +1000,9 @@ function renderPurposes() {
 function updatePurposeDropdown() {
   const sel = document.getElementById('purpose-pick');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— saved —</option>' +
-    purposes.map(p => `<option value="${esc(p.purpose_text)}">${esc(p.purpose_text)}</option>`).join('');
+  sel.innerHTML = '<option value="">— pick a saved purpose —</option>' +
+    purposes.map(p => `<option value="${esc(p.purpose_text)}">${esc(p.purpose_text)}</option>`).join('') +
+    '<option value="__add_purpose__">➕ Add a Purpose...</option>';
 }
 
 async function addPurpose() {
