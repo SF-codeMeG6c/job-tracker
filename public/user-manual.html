@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mileage Tracker — User Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --blue: #1a56a0;
+    --blue-dark: #0f3a73;
+    --blue-light: #e8f0fb;
+    --green: #0d9488;
+    --green-light: #f0fdf4;
+    --orange: #ea580c;
+    --orange-light: #fff7ed;
+    --purple: #7c3aed;
+    --purple-light: #f5f3ff;
+    --gray: #64748b;
+    --gray-light: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --radius: 12px;
+    --shadow: 0 4px 20px rgba(0,0,0,.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    background: #f1f5f9;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .hero {
+    background: linear-gradient(135deg, #0f3a73 0%, #1a56a0 50%, #1e6fbf 100%);
+    padding: 60px 40px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .hero-icon { font-size: 64px; display: block; margin-bottom: 16px; }
+  .hero h1 {
+    color: #fff;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    margin-bottom: 8px;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 17px;
+    font-weight: 400;
+    max-width: 500px;
+    margin: 0 auto 24px;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── Copy button ── */
+  .copy-bar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .copy-bar span { font-size: 13px; color: var(--gray); font-weight: 500; }
+  .btn-copy {
+    background: linear-gradient(135deg, #1a56a0, #1e6fbf);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(26,86,160,.3);
+    transition: all .15s;
+  }
+  .btn-copy:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,160,.4); }
+  .btn-print {
+    background: #f8fafc;
+    color: var(--gray);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    margin-right: 8px;
+    transition: all .15s;
+  }
+  .btn-print:hover { background: #f1f5f9; }
+
+  /* ── Main layout ── */
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  /* ── Table of contents ── */
+  .toc {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    margin-bottom: 36px;
+    border-left: 4px solid var(--blue);
+  }
+  .toc h2 { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--blue); margin-bottom: 14px; }
+  .toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background .1s;
+    border: 1px solid transparent;
+  }
+  .toc-item:hover { background: var(--blue-light); border-color: #bfdbfe; }
+  .toc-num {
+    width: 26px;
+    height: 26px;
+    background: var(--blue);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  /* ── Section headers ── */
+  .section {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header.blue { background: linear-gradient(135deg, #1a56a0, #1e6fbf); }
+  .section-header.green { background: linear-gradient(135deg, #0d9488, #14b8a6); }
+  .section-header.orange { background: linear-gradient(135deg, #ea580c, #f97316); }
+  .section-header.purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+  .section-header.teal { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
+  .section-header.rose { background: linear-gradient(135deg, #be123c, #e11d48); }
+
+  .section-icon { font-size: 28px; }
+  .section-title { color: #fff; }
+  .section-title h2 { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
+  .section-title p { font-size: 13px; opacity: .8; }
+  .section-body { padding: 24px 28px; }
+
+  /* ── Steps ── */
+  .steps { list-style: none; }
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+  .step:last-child { margin-bottom: 0; }
+  .step-num {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #1a56a0, #1e6fbf);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-num.green { background: linear-gradient(135deg, #0d9488, #14b8a6); }
+  .step-num.orange { background: linear-gradient(135deg, #ea580c, #f97316); }
+  .step-num.purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+  .step-content { flex: 1; }
+  .step-content strong { font-weight: 700; display: block; margin-bottom: 3px; font-size: 15px; }
+  .step-content p { color: #475569; font-size: 14px; }
+
+  /* ── Tips ── */
+  .tip {
+    background: var(--blue-light);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #1e40af;
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    align-items: flex-start;
+  }
+  .tip .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Info cards ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .info-card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    background: var(--gray-light);
+  }
+  .info-card-icon { font-size: 24px; margin-bottom: 8px; }
+  .info-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .info-card p { font-size: 13px; color: var(--gray); }
+
+  /* ── Tables ── */
+  .pro-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .pro-table th {
+    background: var(--gray-light);
+    color: var(--gray);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 2px solid var(--border);
+  }
+  .pro-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    vertical-align: top;
+  }
+  .pro-table tr:last-child td { border-bottom: none; }
+  .pro-table tr:hover td { background: #f8fafc; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-orange { background: #ffedd5; color: #9a3412; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── Field reference ── */
+  .field-list { display: flex; flex-direction: column; gap: 10px; }
+  .field-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    background: var(--gray-light);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .field-name {
+    font-weight: 700;
+    font-size: 13px;
+    min-width: 160px;
+    color: var(--blue);
+  }
+  .field-desc { font-size: 13px; color: #475569; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--gray);
+    font-size: 13px;
+  }
+  .footer a { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+  /* ── Print ── */
+  @media print {
+    .copy-bar { display: none; }
+    .hero { padding: 30px; }
+    .hero h1 { font-size: 26px; }
+    body { background: #fff; }
+    .section { box-shadow: none; border: 1px solid #ddd; }
+  }
+
+  /* ── Toast ── */
+  #copy-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    z-index: 9999;
+  }
+  #copy-toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <span class="hero-icon">🚗</span>
+  <h1>Mileage & Expense Tracker</h1>
+  <p>Everything you need to know to track your miles, expenses, and get reimbursed</p>
+  <span class="hero-badge">Freeman Restoration · User Manual</span>
+</div>
+
+<!-- Sticky copy bar -->
+<div class="copy-bar">
+  <span>📖 User Manual — Mileage & Expense Tracker</span>
+  <div>
+    <button class="btn-print" onclick="window.print()">🖨 Print</button>
+    <button class="btn-copy" onclick="copyManual()">📋 Copy All Text</button>
+  </div>
+</div>
+
+<div class="container" id="manual-content">
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <h2>📑 Table of Contents</h2>
+    <div class="toc-grid">
+      <a href="#getting-started" class="toc-item"><span class="toc-num">1</span> Getting Started & Signing In</a>
+      <a href="#trips" class="toc-item"><span class="toc-num">2</span> Adding a Trip</a>
+      <a href="#trip-log" class="toc-item"><span class="toc-num">3</span> The Trip Log</a>
+      <a href="#expenses" class="toc-item"><span class="toc-num">4</span> Adding Expenses</a>
+      <a href="#reports" class="toc-item"><span class="toc-num">5</span> Running Reports</a>
+      <a href="#settings" class="toc-item"><span class="toc-num">6</span> Settings</a>
+      <a href="#tips" class="toc-item"><span class="toc-num">7</span> Tips & Tricks</a>
+    </div>
+  </div>
+
+  <!-- Section 1: Getting Started -->
+  <div class="section" id="getting-started">
+    <div class="section-header blue">
+      <div class="section-icon">🔑</div>
+      <div class="section-title">
+        <h2>Getting Started</h2>
+        <p>Signing in, registering, and resetting your password</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-icon">🌐</div>
+          <h4>App Link</h4>
+          <p style="font-size:12px;word-break:break-all;color:#1a56a0;font-weight:600">mileage-expense-production-4b48.up.railway.app/mileage-tracker.html</p>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">💡</div>
+          <h4>Works Everywhere</h4>
+          <p>Phone, tablet, or computer. Your data is saved online — clearing your browser won't delete anything.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:#1e293b">Signing In</h3>
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>Go to the app link above</strong>
+            <p>You'll see the sign-in screen with a car icon at the top</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>Type your username and password</strong>
+            <p>These were given to you when your account was created</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>Click Sign In</strong>
+            <p>You'll go straight to the Trips tab</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:#1e293b">New to the Team? Register an Account</h3>
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num green">1</div>
+          <div class="step-content"><strong>Click "Register New User"</strong><p>It's a link below the Sign In button</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num green">2</div>
+          <div class="step-content"><strong>Fill in your full name, username, and password</strong><p>Password must be at least 6 characters</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num green">3</div>
+          <div class="step-content"><strong>Click Create Account, then Sign In</strong></div>
+        </li>
+      </ol>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:#1e293b">Forgot Your Password?</h3>
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num orange">1</div>
+          <div class="step-content"><strong>Click "Forgot Password?"</strong><p>Link below the Sign In button</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num orange">2</div>
+          <div class="step-content"><strong>Type your username and a new password</strong><p>Must be 6+ characters. Type it twice to confirm.</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num orange">3</div>
+          <div class="step-content"><strong>Click Reset Password</strong><p>Then sign in with your new password</p></div>
+        </li>
+      </ol>
+
+    </div>
+  </div>
+
+  <!-- Section 2: Adding a Trip -->
+  <div class="section" id="trips">
+    <div class="section-header green">
+      <div class="section-icon">📍</div>
+      <div class="section-title">
+        <h2>Adding a Trip</h2>
+        <p>Log every drive you take for work</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span>Miles and drive time fill in <strong>automatically</strong> once you enter both addresses — no calculator needed!</span>
+      </div>
+
+      <div style="margin-top:22px">
+        <ol class="steps">
+          <li class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>Pick a Frequent Location (optional shortcut)</strong>
+              <p>Click the <strong>Frequent Locations</strong> dropdown at the top. Pick a job site you've been to before. It fills in the To Address and Location Name automatically. Don't see it? Pick <strong>➕ Add a Location...</strong> to save it for next time.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>Fill in the Addresses</strong>
+              <p><strong>From Address</strong> — where you started. Your home address fills in automatically if you saved it in Settings.<br><strong>To Address</strong> — where you drove to.<br><br>💡 <em>Click inside From or To first, then pick from Frequent Locations to fill that specific box.</em></p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>Miles fill in automatically</strong>
+              <p>After you tab out of the address fields, the miles and drive time calculate by themselves using online maps. You can type a different number if it's wrong.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>Fill in Location Name</strong>
+              <p>This fills in automatically from the To address. You can type your own name like <strong>"Conboy House"</strong> or <strong>"Watkins Job"</strong> — this is what shows on your supervision report.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <strong>Pick or type a Purpose</strong>
+              <p>Use the <strong>Saved Purposes</strong> dropdown to pick a common reason (like "Site inspection"), or type your own. Pick <strong>➕ Add a Purpose...</strong> to save a new one.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+              <strong>Add a Description (optional)</strong>
+              <p>Any extra notes about the trip. Click the 🎤 microphone button to speak instead of type.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">7</div>
+            <div class="step-content">
+              <strong>Fill in Trip Details</strong>
+              <p><strong>Date</strong> — when the trip happened<br><strong>Miles</strong> — auto-filled (or change it)<br><strong>Drive Time (min)</strong> — auto-filled from maps<br><strong>Time on Site (min)</strong> — how long you spent at the location</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">8</div>
+            <div class="step-content">
+              <strong>Click + Add Trip</strong>
+              <p>Your trip is saved and appears in the Trip Log below!</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 3: Trip Log -->
+  <div class="section" id="trip-log">
+    <div class="section-header teal">
+      <div class="section-icon">📋</div>
+      <div class="section-title">
+        <h2>The Trip Log</h2>
+        <p>View, edit, and manage all your recorded trips</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <p style="margin-bottom:18px;color:#475569">The Trip Log is the list of all your trips at the bottom of the Trips tab. It shows a live summary bar with your totals.</p>
+
+      <table class="pro-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>How to use it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-blue">Stats Bar</span></td>
+            <td>The blue bar at the top shows your total trips, miles, reimbursement amount, drive minutes, and on-site minutes for the selected month</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-blue">Filter by Month</span></td>
+            <td>Use the month picker (top right of Trip Log) to see only one month's trips. Click <strong>All</strong> to see everything.</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-green">✏ Edit</span></td>
+            <td>Click the Edit button on any trip to fix a mistake — change the date, address, miles, or any other field</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">✕ Delete</span></td>
+            <td>Click the X button to permanently delete a trip. You'll be asked to confirm first.</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <!-- Section 4: Expenses -->
+  <div class="section" id="expenses">
+    <div class="section-header orange">
+      <div class="section-icon">💰</div>
+      <div class="section-title">
+        <h2>Adding Expenses</h2>
+        <p>Track money you spent for work</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <p style="margin-bottom:18px;color:#475569">Use this tab for things like lunch with a client, office supplies, or any other work expense you want to get paid back for.</p>
+
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num orange">1</div>
+          <div class="step-content"><strong>Click the Expenses tab</strong></div>
+        </li>
+        <li class="step">
+          <div class="step-num orange">2</div>
+          <div class="step-content">
+            <strong>Fill in the form</strong>
+            <p><strong>Date</strong> — when you spent the money<br><strong>Description</strong> — what you bought (e.g. "Lunch with adjuster")<br><strong>Amount</strong> — how much it cost in dollars</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num orange">3</div>
+          <div class="step-content">
+            <strong>Upload a receipt (optional but recommended)</strong>
+            <p>Take a photo of your receipt with your phone and upload it. It's stored safely in the cloud. Click the receipt image later to view it.</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num orange">4</div>
+          <div class="step-content"><strong>Click + Add Expense</strong><p>It appears in your expense list below</p></div>
+        </li>
+      </ol>
+
+    </div>
+  </div>
+
+  <!-- Section 5: Reports -->
+  <div class="section" id="reports">
+    <div class="section-header purple">
+      <div class="section-icon">📄</div>
+      <div class="section-title">
+        <h2>Running Reports</h2>
+        <p>Print your monthly report to get reimbursed</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-icon">📋</div>
+          <h4>Mileage & Expense Report (IRS)</h4>
+          <p>Submit this to Accounts Payable. Shows every trip, all expenses, and your total reimbursement amount.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🏠</div>
+          <h4>Job Supervision Time Report</h4>
+          <p>Shows how much drive time and on-site time you spent at each location. Sort by a single location to print just that one.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">How to Print a Report</h3>
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num purple">1</div>
+          <div class="step-content"><strong>Click the Report tab</strong></div>
+        </li>
+        <li class="step">
+          <div class="step-num purple">2</div>
+          <div class="step-content">
+            <strong>Pick the Report Type</strong>
+            <p>Choose <em>Mileage & Expense (IRS)</em> or <em>Job Supervision Time</em></p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num purple">3</div>
+          <div class="step-content"><strong>Pick the Month</strong></div>
+        </li>
+        <li class="step">
+          <div class="step-num purple">4</div>
+          <div class="step-content">
+            <strong>(Supervision only) Filter by Location</strong>
+            <p>Pick one specific location to print just that one, or leave it on "All Locations"</p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num purple">5</div>
+          <div class="step-content"><strong>Click ↻ Generate</strong><p>Your report preview appears below</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num purple">6</div>
+          <div class="step-content">
+            <strong>Click 🖨 Print or 📊 Export Excel</strong>
+            <p>Print sends it to your printer. Export Excel saves it as a spreadsheet file.</p>
+          </div>
+        </li>
+      </ol>
+
+    </div>
+  </div>
+
+  <!-- Section 6: Settings -->
+  <div class="section" id="settings">
+    <div class="section-header rose">
+      <div class="section-icon">⚙️</div>
+      <div class="section-title">
+        <h2>Settings</h2>
+        <p>Set up your info and shared team lists</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <div class="field-list">
+        <div class="field-item">
+          <span class="field-name">📌 Frequent Locations</span>
+          <span class="field-desc"><strong>Shared with your whole team.</strong> Save job site names and addresses here so everyone can pick them quickly. Add: type a Job Name + Address → click + Add Site. Delete: click the 🗑 button.</span>
+        </div>
+        <div class="field-item">
+          <span class="field-name">🗂 Saved Purposes</span>
+          <span class="field-desc"><strong>Shared with your whole team.</strong> Save common trip reasons like "Site inspection" or "Electrical walkthrough" so everyone can pick them from a dropdown.</span>
+        </div>
+        <div class="field-item">
+          <span class="field-name">🏠 Home Address</span>
+          <span class="field-desc">Your home address. Fills in the From field automatically every time you add a trip.</span>
+        </div>
+        <div class="field-item">
+          <span class="field-name">💰 Mileage Rate</span>
+          <span class="field-desc">The dollar amount paid per mile. Default is <strong>$0.70</strong> (IRS 2025 standard rate). Your admin may set a different rate.</span>
+        </div>
+        <div class="field-item">
+          <span class="field-name">🏢 Company Name</span>
+          <span class="field-desc">Shows at the top of your printed reports.</span>
+        </div>
+        <div class="field-item">
+          <span class="field-name">📬 Submit To</span>
+          <span class="field-desc">The department you send reports to (e.g. "Accounts Payable"). Shows on the report header.</span>
+        </div>
+      </div>
+
+      <div class="tip" style="margin-top:18px">
+        <span class="tip-icon">⚠️</span>
+        <span>Always click <strong>✓ Save Settings</strong> after making changes, or they won't be saved!</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 7: Tips -->
+  <div class="section" id="tips">
+    <div class="section-header blue">
+      <div class="section-icon">⚡</div>
+      <div class="section-title">
+        <h2>Tips & Tricks</h2>
+        <p>Get the most out of the app</p>
+      </div>
+    </div>
+    <div class="section-body">
+
+      <table class="pro-table">
+        <thead>
+          <tr>
+            <th>What you want to do</th>
+            <th>How to do it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🎤 Speak instead of type</td>
+            <td>Click the microphone 🎤 button next to the Description field and talk</td>
+          </tr>
+          <tr>
+            <td>➕ Add a new location while adding a trip</td>
+            <td>Pick <strong>➕ Add a Location...</strong> from the Frequent Locations dropdown — it takes you to Settings automatically</td>
+          </tr>
+          <tr>
+            <td>➕ Add a new purpose while adding a trip</td>
+            <td>Pick <strong>➕ Add a Purpose...</strong> from the Saved Purposes dropdown</td>
+          </tr>
+          <tr>
+            <td>📱 Use it like an app on your phone</td>
+            <td>Open the link in your browser → tap Share → tap "Add to Home Screen" — it appears as an icon on your phone</td>
+          </tr>
+          <tr>
+            <td>✏️ Fix a mistake in a trip</td>
+            <td>Click <strong>✏ Edit</strong> on any trip in the Trip Log</td>
+          </tr>
+          <tr>
+            <td>📊 Export to Excel</td>
+            <td>Go to Report tab → Generate → click Export Excel</td>
+          </tr>
+          <tr>
+            <td>🔄 Switch devices</td>
+            <td>Just sign in on any device — all your data is online and synced automatically</td>
+          </tr>
+          <tr>
+            <td>📍 Fill From or To from saved locations</td>
+            <td>Click inside the From or To field first, then pick from the Frequent Locations dropdown</td>
+          </tr>
+          <tr>
+            <td>🔒 My data is private</td>
+            <td>Your trips and expenses are only visible to you. Locations and purposes are shared with the whole team.</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p style="font-size:20px;margin-bottom:8px">🚗</p>
+    <p style="font-weight:700;margin-bottom:4px">Mileage & Expense Tracker</p>
+    <p>Freeman Restoration · <a href="https://mileage-expense-production-4b48.up.railway.app/mileage-tracker.html">Open App</a></p>
+    <p style="margin-top:12px;font-size:12px;color:#94a3b8">Questions? Contact Spencer Freeman</p>
+  </div>
+
+</div>
+
+<div id="copy-toast">✓ Manual text copied to clipboard!</div>
+
+<script>
+function copyManual() {
+  const content = document.getElementById('manual-content');
+  const text = content.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }).catch(() => {
+    // Fallback: select all text
+    const range = document.createRange();
+    range.selectNode(content);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+    const toast = document.getElementById('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  });
+}
+</script>
+
+</body>
+</html>
