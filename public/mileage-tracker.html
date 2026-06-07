@@ -163,6 +163,274 @@
   #toast { position: fixed; bottom: 24px; right: 24px; background: #1e2532; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; z-index: 9999; display: none; }
   #toast.show { display: block; }
 
+
+  /* ══ Professional Trips Redesign ══════════════════════════════════════════ */
+  :root {
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+    --primary-gradient: linear-gradient(135deg, #1a56a0 0%, #1e6fbf 100%);
+  }
+
+  /* Add Trip card */
+  .trip-form-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    border: none;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .trip-form-header {
+    background: var(--primary-gradient);
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .trip-form-header h3 {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    margin: 0;
+  }
+  .trip-form-header span { font-size: 18px; }
+  .trip-form-body { padding: 20px 22px; }
+
+  /* Field section dividers */
+  .form-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f2f7;
+  }
+  .form-section:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .form-section-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #a0aec0;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .form-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #edf0f7;
+  }
+
+  /* Professional inputs */
+  .pro-input {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: Arial;
+    color: #1e2532;
+    background: #fafbfd;
+    width: 100%;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .pro-input:focus {
+    outline: none;
+    border-color: #1a56a0;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(26,86,160,.12);
+  }
+  .pro-input::placeholder { color: #b0bcd0; }
+  .pro-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  /* Stats bar */
+  .trip-stats-bar {
+    display: flex;
+    gap: 0;
+    background: linear-gradient(135deg, #1a56a0, #1e6fbf);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .trip-stat {
+    flex: 1;
+    padding: 12px 18px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,.15);
+    color: #fff;
+  }
+  .trip-stat:last-child { border-right: none; }
+  .trip-stat-value { font-size: 20px; font-weight: 800; line-height: 1; }
+  .trip-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; opacity: .8; margin-top: 3px; }
+
+  /* Professional trip log card */
+  .trip-log-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    border: none;
+    overflow: hidden;
+  }
+  .trip-log-header {
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f0f2f7;
+    background: #fafbfd;
+  }
+  .trip-log-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e2532;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .trip-log-title::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--primary-gradient);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* Pro table */
+  .pro-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pro-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid #e8edf5;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .pro-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f0f2f7;
+    vertical-align: middle;
+    color: #374151;
+  }
+  .pro-table tbody tr { transition: background .1s; }
+  .pro-table tbody tr:hover td { background: #f0f6ff; }
+  .pro-table tbody tr:last-child td { border-bottom: none; }
+
+  /* Location badge */
+  .loc-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .miles-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .date-cell { color: #6b7a99; font-size: 12px; white-space: nowrap; }
+  .addr-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #4b5563; font-size: 12px; }
+  .purpose-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151; }
+
+  /* Action buttons */
+  .btn-edit-pro {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all .15s;
+    margin-right: 4px;
+  }
+  .btn-edit-pro:hover { background: #dbeafe; }
+  .btn-del-pro {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all .15s;
+  }
+  .btn-del-pro:hover { background: #fee2e2; }
+
+  /* Add Trip button */
+  .btn-add-trip {
+    background: var(--primary-gradient);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(26,86,160,.35);
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: Arial;
+  }
+  .btn-add-trip:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,160,.45); }
+  .btn-clear-pro {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: Arial;
+  }
+  .btn-clear-pro:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+  /* Month filter pill */
+  .month-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .month-filter input[type=month] {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 13px;
+    background: #fafbfd;
+    color: #374151;
+  }
+  .month-filter input[type=month]:focus { outline: none; border-color: #1a56a0; }
+
   /* ── Print ── */
   @media print {
     body { background: #fff; }
@@ -277,103 +545,163 @@
 
     <!-- ── TRIPS ── -->
     <div id="trips-section" class="section active">
-      <div class="card">
-        <div class="card-title">Add Trip</div>
 
-        <!-- Row 1: Frequent Locations | From Address | To Address -->
-        <div class="form-row">
-          <div class="form-group" style="flex:1;min-width:180px">
-            <label>📌 Frequent Locations</label>
-            <select id="pick-to" onchange="pickFrequentLocation()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
-              <option value="">— pick a saved location —</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:2">
-            <label>From Address</label>
-            <input type="text" id="trip-from" placeholder="Street address">
-          </div>
-          <div class="form-group" style="flex:2">
-            <label>To Address</label>
-            <input type="text" id="trip-to" placeholder="Street address">
-          </div>
+      <!-- Add Trip Card -->
+      <div class="trip-form-card">
+        <div class="trip-form-header">
+          <span>🚗</span>
+          <h3>Add Trip</h3>
         </div>
+        <div class="trip-form-body">
 
-        <!-- Row 2: Location Name | Saved Purposes | Purpose -->
-        <div class="form-row">
-          <div class="form-group" style="flex:0 0 200px">
-            <label>Location Name</label>
-            <input type="text" id="trip-job-name" placeholder="Auto-filled or type">
-          </div>
-          <div class="form-group" style="flex:0 0 200px">
-            <label>📋 Saved Purposes</label>
-            <select id="purpose-pick" onchange="pickPurpose()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
-              <option value="">— pick a saved purpose —</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:3">
-            <label>Purpose</label>
-            <input type="text" id="trip-purpose" placeholder="Type or pick above">
-          </div>
-        </div>
-
-        <!-- Row 3: Description -->
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>Description</label>
-            <div style="display:flex;gap:5px">
-              <input type="text" id="trip-description" placeholder="Additional notes or details" style="flex:1">
-              <button class="btn-mic" onclick="startDictation('trip-description')" id="mic-trip-description" title="Speak description">🎤</button>
+          <!-- Section 1: Location -->
+          <div class="form-section">
+            <div class="form-section-label">📍 Location</div>
+            <div class="form-row" style="margin-bottom:10px">
+              <div class="form-group" style="flex:1;min-width:180px">
+                <label class="pro-label">Frequent Locations</label>
+                <select id="pick-to" onchange="pickFrequentLocation()" class="pro-input">
+                  <option value="">— pick a saved location —</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:2">
+                <label class="pro-label">From Address</label>
+                <input type="text" id="trip-from" placeholder="Starting address" class="pro-input">
+              </div>
+              <div class="form-group" style="flex:2">
+                <label class="pro-label">To Address</label>
+                <input type="text" id="trip-to" placeholder="Destination address" class="pro-input">
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0">
+              <div class="form-group" style="flex:0 0 220px">
+                <label class="pro-label">Location Name</label>
+                <input type="text" id="trip-job-name" placeholder="Auto-filled or type" class="pro-input">
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Row 4: Date | Miles | Drive Time | Time on Site — all one line -->
-        <div class="form-row">
-          <div class="form-group" style="flex:0 0 135px">
-            <label>Date</label>
-            <input type="date" id="trip-date">
+          <!-- Section 2: Purpose -->
+          <div class="form-section">
+            <div class="form-section-label">📋 Purpose</div>
+            <div class="form-row" style="margin-bottom:0">
+              <div class="form-group" style="flex:0 0 220px">
+                <label class="pro-label">Saved Purposes</label>
+                <select id="purpose-pick" onchange="pickPurpose()" class="pro-input">
+                  <option value="">— pick a saved purpose —</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:3">
+                <label class="pro-label">Purpose / Description of Visit</label>
+                <input type="text" id="trip-purpose" placeholder="e.g. Site inspection, Client meeting" class="pro-input">
+              </div>
+            </div>
           </div>
-          <div class="form-group" style="flex:0 0 110px">
-            <label>Miles</label>
-            <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1">
-            <span class="hint" id="miles-hint"></span>
-          </div>
-          <div class="form-group" style="flex:0 0 150px">
-            <label>🚗 Drive Time (min)</label>
-            <input type="number" id="trip-drive-time" placeholder="0" min="0" step="1">
-          </div>
-          <div class="form-group" style="flex:0 0 150px">
-            <label>🏠 Time on Site (min)</label>
-            <input type="number" id="trip-site-time" placeholder="0" min="0" step="1">
-          </div>
-        </div>
 
-        <div class="btn-group" style="margin-top:12px">
-          <button class="btn btn-primary" onclick="addTrip()">+ Add Trip</button>
-          <button class="btn btn-secondary" onclick="clearTripForm()">Clear</button>
+          <!-- Section 3: Notes -->
+          <div class="form-section">
+            <div class="form-section-label">📝 Notes</div>
+            <div class="form-row" style="margin-bottom:0">
+              <div class="form-group" style="flex:1">
+                <label class="pro-label">Description</label>
+                <div style="display:flex;gap:6px">
+                  <input type="text" id="trip-description" placeholder="Additional notes or details" class="pro-input" style="flex:1">
+                  <button class="btn-mic" onclick="startDictation('trip-description')" id="mic-trip-description" title="Speak description">🎤</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Trip Details -->
+          <div class="form-section" style="background:#f8fafd;border-radius:8px;padding:14px;margin-bottom:16px;border-bottom:none">
+            <div class="form-section-label" style="margin-bottom:12px">🗓 Trip Details</div>
+            <div class="form-row" style="margin-bottom:0">
+              <div class="form-group" style="flex:0 0 140px">
+                <label class="pro-label">Date</label>
+                <input type="date" id="trip-date" class="pro-input">
+              </div>
+              <div class="form-group" style="flex:0 0 110px">
+                <label class="pro-label">Miles</label>
+                <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1" class="pro-input">
+                <span class="hint" id="miles-hint"></span>
+              </div>
+              <div class="form-group" style="flex:0 0 150px">
+                <label class="pro-label">🚗 Drive Time (min)</label>
+                <input type="number" id="trip-drive-time" placeholder="0" min="0" step="1" class="pro-input">
+              </div>
+              <div class="form-group" style="flex:0 0 150px">
+                <label class="pro-label">🏠 Time on Site (min)</label>
+                <input type="number" id="trip-site-time" placeholder="0" min="0" step="1" class="pro-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn-add-trip" onclick="addTrip()">＋ Add Trip</button>
+            <button class="btn-clear-pro" onclick="clearTripForm()">Clear</button>
+          </div>
+
         </div>
       </div>
 
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <div class="card-title" style="margin-bottom:0">Trip Log</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="month" id="trips-filter" onchange="loadTrips()" style="border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:13px">
+      <!-- Trip Log Card -->
+      <div class="trip-log-card">
+        <div class="trip-log-header">
+          <div class="trip-log-title">Trip Log</div>
+          <div class="month-filter">
+            <input type="month" id="trips-filter" onchange="loadTrips()">
             <button class="btn btn-secondary btn-sm" onclick="clearTripFilter()">All</button>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Date</th><th>From</th><th>To</th><th>Location Name</th><th>Purpose</th><th style="text-align:right">Miles</th><th></th>
-            </tr></thead>
+        <div id="trips-stats-bar" style="display:none">
+          <div class="trip-stats-bar" style="border-radius:0;margin-bottom:0">
+            <div class="trip-stat">
+              <div class="trip-stat-value" id="stat-trips">0</div>
+              <div class="trip-stat-label">Trips</div>
+            </div>
+            <div class="trip-stat">
+              <div class="trip-stat-value" id="stat-miles">0.0</div>
+              <div class="trip-stat-label">Total Miles</div>
+            </div>
+            <div class="trip-stat">
+              <div class="trip-stat-value" id="stat-reimb">$0.00</div>
+              <div class="trip-stat-label">Reimbursement</div>
+            </div>
+            <div class="trip-stat">
+              <div class="trip-stat-value" id="stat-drive">0</div>
+              <div class="trip-stat-label">Drive Mins</div>
+            </div>
+            <div class="trip-stat">
+              <div class="trip-stat-value" id="stat-site">0</div>
+              <div class="trip-stat-label">On-Site Mins</div>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:0">
+          <table class="pro-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Location</th>
+                <th>Purpose</th>
+                <th style="text-align:right">Miles</th>
+                <th style="text-align:right">Drive</th>
+                <th style="text-align:right">On Site</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody id="trips-tbody"></tbody>
           </table>
         </div>
-        <div id="trips-total" style="text-align:right;margin-top:10px;font-weight:700;color:var(--primary);font-size:13px"></div>
+        <div id="trips-total" style="padding:12px 18px;text-align:right;font-size:13px;background:#fafbfd;border-top:1px solid #f0f2f7"></div>
       </div>
+
     </div>
 
+    <!-- ── EXPENSES ── -->
     <!-- ── EXPENSES ── -->
     <div id="expenses-section" class="section">
       <div class="card">
@@ -1090,32 +1418,48 @@ async function loadTrips() {
 function renderTrips() {
   const tbody = document.getElementById('trips-tbody');
   tbody.innerHTML = '';
+  const statsBar = document.getElementById('trips-stats-bar');
   if (!trips.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No trips recorded yet.</td></tr>';
-    document.getElementById('trips-total').textContent = '';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#a0aec0;padding:36px;font-style:italic;font-size:14px">No trips recorded yet. Add your first trip above.</td></tr>';
+    document.getElementById('trips-total').innerHTML = '';
+    if (statsBar) statsBar.style.display = 'none';
     return;
   }
-  let total = 0;
+  let totalMiles = 0, totalDrive = 0, totalSite = 0;
   trips.forEach(t => {
-    total += parseFloat(t.miles) || 0;
+    totalMiles += parseFloat(t.miles) || 0;
+    totalDrive += parseInt(t.drive_time) || 0;
+    totalSite += parseInt(t.site_time) || 0;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${fmtDate(t.date)}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.from_addr)}">${esc(t.from_addr)}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.to_addr)}">${esc(t.to_addr)}</td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.job_name)}">${esc(t.job_name||'')}</td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose||'')}</td>
-      <td style="text-align:right;font-weight:600">${parseFloat(t.miles).toFixed(1)}</td>
+      <td class="date-cell">${fmtDate(t.date)}</td>
+      <td class="addr-cell" title="${esc(t.from_addr)}">${esc(t.from_addr)}</td>
+      <td class="addr-cell" title="${esc(t.to_addr)}">${esc(t.to_addr)}</td>
+      <td>${t.job_name ? `<span class="loc-badge" title="${esc(t.job_name)}">${esc(t.job_name)}</span>` : '<span style="color:#d1d5db">—</span>'}</td>
+      <td class="purpose-cell" title="${esc(t.purpose)}">${esc(t.purpose||'')}</td>
+      <td style="text-align:right"><span class="miles-badge">${parseFloat(t.miles).toFixed(1)}</span></td>
+      <td style="text-align:right;color:#6b7a99;font-size:12px">${parseInt(t.drive_time)||0}m</td>
+      <td style="text-align:right;color:#6b7a99;font-size:12px">${parseInt(t.site_time)||0}m</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-secondary btn-sm" onclick="openEditTrip(${t.id})" style="margin-right:4px">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">🗑</button>
+        <button class="btn-edit-pro" onclick="openEditTrip(${t.id})">✏ Edit</button>
+        <button class="btn-del-pro" onclick="deleteTrip(${t.id})">✕</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
-  const reimb = total * (parseFloat(userSettings.rate) || 0.70);
+  const rate = parseFloat(userSettings.rate) || 0.70;
+  const reimb = totalMiles * rate;
+  // Update stats bar
+  if (statsBar) {
+    statsBar.style.display = 'block';
+    document.getElementById('stat-trips').textContent = trips.length;
+    document.getElementById('stat-miles').textContent = totalMiles.toFixed(1);
+    document.getElementById('stat-reimb').textContent = '$' + reimb.toFixed(2);
+    document.getElementById('stat-drive').textContent = totalDrive;
+    document.getElementById('stat-site').textContent = totalSite;
+  }
   document.getElementById('trips-total').innerHTML =
-    `Total: <strong>${total.toFixed(1)} miles</strong> &nbsp;|&nbsp; Reimbursement @ $${parseFloat(userSettings.rate || 0.70).toFixed(3)}/mi: <strong style="color:var(--success)">$${reimb.toFixed(2)}</strong>`;
+    `<strong style="color:#1a56a0">${totalMiles.toFixed(1)} miles</strong> &nbsp;·&nbsp; Reimbursement @ $${rate.toFixed(3)}/mi: <strong style="color:#1a7a4a">$${reimb.toFixed(2)}</strong>`;
 }
 
 async function addTrip() {
