@@ -280,10 +280,10 @@
       <div class="card">
         <div class="card-title">Add Trip</div>
 
-        <!-- Frequent Locations picker -->
+        <!-- Frequent Locations picker — half width -->
         <div style="margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📌 Frequent Locations</div>
-          <select id="pick-to" onchange="pickFrequentLocation()" style="width:100%;max-width:400px;border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;background:#fff">
+          <select id="pick-to" onchange="pickFrequentLocation()" style="width:50%;min-width:200px;border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;background:#fff">
             <option value="">— pick a saved location —</option>
           </select>
         </div>
@@ -295,43 +295,31 @@
           </div>
           <div class="form-group" style="flex:2">
             <label>From Address</label>
-            <div style="display:flex;gap:5px">
-              <input type="text" id="trip-from" placeholder="Street address" style="flex:1">
-            </div>
+            <input type="text" id="trip-from" placeholder="Street address">
           </div>
           <div class="form-group" style="flex:2">
             <label>To Address</label>
-            <div style="display:flex;gap:5px">
-              <input type="text" id="trip-to" placeholder="Street address" style="flex:1">
-            </div>
+            <input type="text" id="trip-to" placeholder="Street address">
           </div>
         </div>
+
+        <!-- Location Name | Saved Purposes | Purpose — all one row -->
         <div class="form-row">
-          <div class="form-group" style="flex:2">
+          <div class="form-group" style="flex:0 0 200px">
             <label>Location Name</label>
-            <div style="display:flex;gap:5px">
-              <input type="text" id="trip-job-name" placeholder="Auto-filled from Frequent Sites or type" style="flex:1">
-            </div>
+            <input type="text" id="trip-job-name" placeholder="Auto-filled or type">
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1;min-width:180px">
+          <div class="form-group" style="flex:0 0 200px">
             <label>📋 Saved Purposes</label>
             <select id="purpose-pick" onchange="pickPurpose()" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 8px;font-size:13px;background:#fff">
               <option value="">— pick a saved purpose —</option>
             </select>
           </div>
-          <div class="form-group" style="flex:2">
+          <div class="form-group" style="flex:3">
             <label>Purpose</label>
-            <div style="display:flex;gap:5px">
-              <input type="text" id="trip-purpose" placeholder="Type or pick above" style="flex:1">
-            </div>
+            <input type="text" id="trip-purpose" placeholder="Type or pick above">
           </div>
-          <div class="form-group" style="flex:1;min-width:110px">
-            <label>Lead / Job #</label>
-            <input type="text" id="trip-lead" placeholder="Optional">
-          </div>
-          <div class="form-group" style="flex:0 0 120px">
+          <div class="form-group" style="flex:0 0 110px">
             <label>Miles</label>
             <input type="number" id="trip-miles" placeholder="0.0" min="0" step="0.1">
             <span class="hint" id="miles-hint"></span>
@@ -372,8 +360,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Date</th><th>From</th><th>To</th><th>Location Name</th><th>Purpose</th><th>Lead #</th>
-              <th style="text-align:right">Miles</th><th></th>
+              <th>Date</th><th>From</th><th>To</th><th>Location Name</th><th>Purpose</th><th style="text-align:right">Miles</th><th></th>
             </tr></thead>
             <tbody id="trips-tbody"></tbody>
           </table>
@@ -602,10 +589,6 @@
       <div class="form-group" style="flex:2">
         <label>Purpose</label>
         <input type="text" id="edit-purpose">
-      </div>
-      <div class="form-group" style="flex:1;min-width:100px">
-        <label>Lead / Job #</label>
-        <input type="text" id="edit-lead">
       </div>
       <div class="form-group" style="flex:0 0 100px">
         <label>Miles</label>
@@ -1117,7 +1100,6 @@ function renderTrips() {
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.to_addr)}">${esc(t.to_addr)}</td>
       <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.job_name)}">${esc(t.job_name||'')}</td>
       <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.purpose)}">${esc(t.purpose||'')}</td>
-      <td>${t.lead_number ? `<span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700">${esc(t.lead_number)}</span>` : ''}</td>
       <td style="text-align:right;font-weight:600">${parseFloat(t.miles).toFixed(1)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-secondary btn-sm" onclick="openEditTrip(${t.id})" style="margin-right:4px">✏️</button>
@@ -1140,7 +1122,6 @@ async function addTrip() {
   const description = document.getElementById('trip-description').value.trim();
   const drive_time = parseInt(document.getElementById('trip-drive-time').value) || 0;
   const site_time = parseInt(document.getElementById('trip-site-time').value) || 0;
-  const lead_number = document.getElementById('trip-lead').value.trim();
   const miles = parseFloat(document.getElementById('trip-miles').value);
   const addReturn = document.getElementById('trip-return').checked;
 
@@ -1148,8 +1129,8 @@ async function addTrip() {
     toast('Please fill in Date, From, To, and Miles.'); return;
   }
 
-  const batch = [{ date, from_addr, to_addr, job_name, purpose, description, drive_time, site_time, lead_number, miles }];
-  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, drive_time, site_time, lead_number, miles });
+  const batch = [{ date, from_addr, to_addr, job_name, purpose, description, drive_time, site_time, lead_number: "", miles }];
+  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, drive_time, site_time, lead_number: "", miles });
 
   await api('POST', '/api/mileage/trips', batch);
   clearTripForm();
@@ -1175,7 +1156,6 @@ function openEditTrip(id) {
   document.getElementById('edit-description').value = t.description || '';
   document.getElementById('edit-drive-time').value = t.drive_time || '';
   document.getElementById('edit-site-time').value = t.site_time || '';
-  document.getElementById('edit-lead').value = t.lead_number || '';
   document.getElementById('edit-miles').value = parseFloat(t.miles).toFixed(1);
   document.getElementById('edit-trip-modal').classList.add('open');
 }
@@ -1191,7 +1171,6 @@ async function saveEditTrip() {
     description: document.getElementById('edit-description').value.trim(),
     drive_time: parseInt(document.getElementById('edit-drive-time').value) || 0,
     site_time: parseInt(document.getElementById('edit-site-time').value) || 0,
-    lead_number: document.getElementById('edit-lead').value.trim(),
     miles: parseFloat(document.getElementById('edit-miles').value),
   };
   if (!body.date || !body.from_addr || !body.to_addr || isNaN(body.miles)) {
@@ -1219,7 +1198,6 @@ function clearTripForm() {
   document.getElementById('trip-description').value = '';
   document.getElementById('trip-drive-time').value = '';
   document.getElementById('trip-site-time').value = '';
-  document.getElementById('trip-lead').value = '';
   document.getElementById('trip-miles').value = '';
   document.getElementById('miles-hint').textContent = '';
   document.getElementById('trip-return').checked = true;
