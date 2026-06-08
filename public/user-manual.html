@@ -316,11 +316,22 @@
 
   /* ── Print ── */
   @media print {
-    .copy-bar { display: none; }
-    .hero { padding: 30px; }
-    .hero h1 { font-size: 26px; }
-    body { background: #fff; }
-    .section { box-shadow: none; border: 1px solid #ddd; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .copy-bar { display: none !important; }
+    body { background: #fff; margin: 0; padding: 0; }
+    .hero {
+      padding: 30px;
+      background: linear-gradient(135deg, #1a56a0 0%, #0d2d5e 100%) !important;
+      color: #fff !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .hero h1 { font-size: 26px; color: #fff !important; }
+    .hero p, .hero-badge { color: rgba(255,255,255,.85) !important; }
+    .section { box-shadow: none !important; border: 1px solid #ddd; page-break-inside: avoid; }
+    .step-item { page-break-inside: avoid; }
+    .info-card { page-break-inside: avoid; }
+    a { color: inherit !important; text-decoration: none !important; }
   }
 
   /* ── Toast ── */
