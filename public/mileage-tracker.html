@@ -1516,7 +1516,7 @@ async function addTrip() {
   const batch = [{ date, from_addr, to_addr, job_name, purpose, description, drive_time, site_time, lead_number: "", miles }];
 
   await api('POST', '/api/mileage/trips', batch);
-  clearTripForm();
+  clearTripForm(to_addr);
   await loadTrips();
   toast('Trip added!');
 }
@@ -1572,9 +1572,9 @@ document.getElementById('edit-trip-modal').addEventListener('click', e => {
   if (e.target.id === 'edit-trip-modal') closeEditModal();
 });
 
-function clearTripForm() {
+function clearTripForm(nextFrom) {
   document.getElementById('trip-date').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('trip-from').value = userSettings.home_address || '';
+  document.getElementById('trip-from').value = nextFrom || userSettings.home_address || '';
   document.getElementById('trip-to').value = '';
   document.getElementById('trip-job-name').value = '';
   document.getElementById('trip-purpose').value = '';
