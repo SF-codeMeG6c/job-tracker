@@ -1482,19 +1482,16 @@ async function addTrip() {
   const drive_time = parseInt(document.getElementById('trip-drive-time').value) || 0;
   const site_time = parseInt(document.getElementById('trip-site-time').value) || 0;
   const miles = parseFloat(document.getElementById('trip-miles').value);
-  const addReturn = document.getElementById('trip-return').checked;
-
   if (!date || !from_addr || !to_addr || isNaN(miles) || miles <= 0) {
     toast('Please fill in Date, From, To, and Miles.'); return;
   }
 
   const batch = [{ date, from_addr, to_addr, job_name, purpose, description, drive_time, site_time, lead_number: "", miles }];
-  if (addReturn) batch.push({ date, from_addr: to_addr, to_addr: from_addr, job_name, purpose: 'Return — ' + (purpose || job_name), description, drive_time, site_time, lead_number: "", miles });
 
   await api('POST', '/api/mileage/trips', batch);
   clearTripForm();
   await loadTrips();
-  toast(addReturn ? 'Trip + return added!' : 'Trip added!');
+  toast('Trip added!');
 }
 
 async function deleteTrip(id) {
@@ -1559,7 +1556,6 @@ function clearTripForm() {
   document.getElementById('trip-site-time').value = '';
   document.getElementById('trip-miles').value = '';
   document.getElementById('miles-hint').textContent = '';
-  document.getElementById('trip-return').checked = true;
 }
 
 function clearTripFilter() {
