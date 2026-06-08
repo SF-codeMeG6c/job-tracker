@@ -638,9 +638,13 @@
           </div>
 
           <!-- Actions -->
-          <div style="display:flex;gap:10px;align-items:center">
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
             <button class="btn-add-trip" onclick="addTrip()">＋ Add Trip</button>
             <button class="btn-clear-pro" onclick="clearTripForm()">Clear</button>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);user-select:none;background:var(--accent);border:1.5px solid var(--border);border-radius:7px;padding:6px 13px">
+              <input type="checkbox" id="trip-return" onchange="toggleReturnHome()" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer">
+              🏠 Return to Home
+            </label>
           </div>
 
         </div>
@@ -1472,6 +1476,29 @@ function renderTrips() {
     `<strong style="color:#1a56a0">${totalMiles.toFixed(1)} miles</strong> &nbsp;·&nbsp; Reimbursement @ $${rate.toFixed(3)}/mi: <strong style="color:#1a7a4a">$${reimb.toFixed(2)}</strong>`;
 }
 
+function toggleReturnHome() {
+  const checked = document.getElementById('trip-return').checked;
+  if (checked) {
+    // Save current To address as the new From, home address as the new To
+    const currentTo = document.getElementById('trip-to').value.trim();
+    const home = userSettings.home_address || '';
+    if (currentTo) document.getElementById('trip-from').value = currentTo;
+    document.getElementById('trip-to').value = home;
+    document.getElementById('trip-job-name').value = 'Home';
+    document.getElementById('trip-purpose').value = 'Return to home';
+    scheduleAutoMiles();
+  } else {
+    // Uncheck — reset to home address as from, blank to
+    document.getElementById('trip-from').value = userSettings.home_address || '';
+    document.getElementById('trip-to').value = '';
+    document.getElementById('trip-job-name').value = '';
+    document.getElementById('trip-purpose').value = '';
+    document.getElementById('trip-miles').value = '';
+    document.getElementById('miles-hint').textContent = '';
+    document.getElementById('trip-drive-time').value = '';
+  }
+}
+
 async function addTrip() {
   const date = document.getElementById('trip-date').value;
   const from_addr = document.getElementById('trip-from').value.trim();
@@ -1556,6 +1583,7 @@ function clearTripForm() {
   document.getElementById('trip-site-time').value = '';
   document.getElementById('trip-miles').value = '';
   document.getElementById('miles-hint').textContent = '';
+  document.getElementById('trip-return').checked = false;
 }
 
 function clearTripFilter() {
