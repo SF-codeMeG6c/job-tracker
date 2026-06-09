@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mileage & Expense Tracker</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root {
     --primary: #1a56a0;
@@ -746,8 +748,8 @@
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
-            <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px">
-            <span class="hint">Saved to the cloud — safe even if browser is cleared</span>
+            <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px" onchange="scanReceiptForTotal(this)">
+            <span class="hint" id="receipt-scan-hint">Saved to the cloud — amount will be read automatically from receipt</span>
           </div>
         </div>
         <div class="btn-group" style="margin-top:12px">
@@ -1709,6 +1711,115 @@ function populateExpenseLocationDropdown() {
   sel.value = cur;
 }
 
+// ── Receipt total extraction ─────────────────────
+function extractTotalFromText(text) {
+  // Normalize text
+  const t = text.replace(/\r/g, '\n');
+  const lines = t.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Keywords that indicate the final total line (ordered by priority)
+  const totalKeywords = [
+    /grand\s*total/i,
+    /order\s*total/i,
+    /total\s*due/i,
+    /amount\s*due/i,
+    /balance\s*due/i,
+    /total\s*amount/i,
+    /charge\s*total/i,
+    /sale\s*total/i,
+    /\btotal\b/i,
+  ];
+
+  // Dollar pattern: $1,234.56 or 1,234.56 or 1234.56
+  const dollarPat = /\$?\s*([\d,]+\.\d{2})/g;
+
+  // Try to find a total line by keyword, then extract dollar amount from it
+  for (const kw of totalKeywords) {
+    for (let i = 0; i < lines.length; i++) {
+      if (kw.test(lines[i])) {
+        // Check this line and the next 2 for a dollar amount
+        const chunk = lines.slice(i, i + 3).join(' ');
+        const matches = [...chunk.matchAll(dollarPat)];
+        if (matches.length) {
+          // Take the last match on the line (totals are usually rightmost)
+          const raw = matches[matches.length - 1][1].replace(/,/g, '');
+          const val = parseFloat(raw);
+          if (val > 0 && val < 100000) return val;
+        }
+      }
+    }
+  }
+
+  // Fallback: collect all dollar amounts from the whole text and return the largest
+  // (receipts usually end with the grand total as the biggest number)
+  const allMatches = [...t.matchAll(dollarPat)];
+  if (allMatches.length) {
+    const amounts = allMatches
+      .map(m => parseFloat(m[1].replace(/,/g, '')))
+      .filter(v => v > 0 && v < 100000);
+    if (amounts.length) return Math.max(...amounts);
+  }
+  return null;
+}
+
+async function scanReceiptForTotal(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const hint = document.getElementById('receipt-scan-hint');
+  hint.textContent = '🔍 Reading receipt…';
+  hint.style.color = 'var(--primary)';
+
+  try {
+    let total = null;
+
+    if (file.type === 'application/pdf') {
+      // PDF.js text extraction (works on digital/text-layer PDFs)
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const arrayBuf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+      let fullText = '';
+      for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        fullText += content.items.map(i => i.str).join(' ') + '\n';
+      }
+      total = extractTotalFromText(fullText);
+
+      // If no text layer (scanned PDF), render first page and OCR it
+      if (total === null) {
+        hint.textContent = '🔍 Scanning image in PDF…';
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+        total = extractTotalFromText(text);
+      }
+    } else {
+      // Image file — OCR with Tesseract
+      hint.textContent = '🔍 Scanning receipt image…';
+      const { data: { text } } = await Tesseract.recognize(file, 'eng');
+      total = extractTotalFromText(text);
+    }
+
+    if (total !== null) {
+      document.getElementById('exp-amount').value = total.toFixed(2);
+      hint.textContent = `✅ Total found: $${total.toFixed(2)} — verify before saving`;
+      hint.style.color = 'var(--success)';
+    } else {
+      hint.textContent = '⚠️ Could not read total — please enter amount manually';
+      hint.style.color = '#c0392b';
+    }
+  } catch (err) {
+    console.error('Receipt scan error:', err);
+    hint.textContent = '⚠️ Could not read receipt — please enter amount manually';
+    hint.style.color = '#c0392b';
+  }
+}
+
 async function addExpense() {
   const date = document.getElementById('exp-date').value;
   const description = document.getElementById('exp-desc').value.trim();
@@ -1751,6 +1862,9 @@ function clearExpenseForm() {
   document.getElementById('exp-location-pick').value = '';
   document.getElementById('exp-category-pick').value = '';
   document.getElementById('exp-category-new').value = '';
+  const hint = document.getElementById('receipt-scan-hint');
+  hint.textContent = 'Saved to the cloud — amount will be read automatically from receipt';
+  hint.style.color = '';
 }
 
 function viewReceipt(data, name, type) {
