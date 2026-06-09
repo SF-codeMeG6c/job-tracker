@@ -150,6 +150,15 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE mileage_expenses ADD COLUMN IF NOT EXISTS location_name TEXT DEFAULT ''`);
+  await query(`ALTER TABLE mileage_expenses ADD COLUMN IF NOT EXISTS category TEXT DEFAULT ''`);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mileage_expense_categories (
+      id SERIAL PRIMARY KEY,
+      category_text TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Database initialized');
 }
 

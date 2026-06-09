@@ -725,6 +725,24 @@
             <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Charge to Location</label>
+            <select id="exp-location-pick" onchange="pickExpenseLocation()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
+              <option value="">— pick a saved location —</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Category</label>
+            <div style="display:flex;gap:6px">
+              <select id="exp-category-pick" onchange="pickExpenseCategory()" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
+                <option value="">— pick a category —</option>
+              </select>
+              <input type="text" id="exp-category-new" placeholder="New category" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+              <button class="btn btn-secondary" onclick="addExpenseCategory()" style="white-space:nowrap">+ Add</button>
+            </div>
+          </div>
+        </div>
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
@@ -746,7 +764,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th>Receipt</th><th></th>
+              <th>Date</th><th>Description</th><th>Location</th><th>Category</th><th style="text-align:right">Amount</th><th>Receipt</th><th></th>
             </tr></thead>
             <tbody id="expenses-tbody"></tbody>
           </table>
@@ -1074,7 +1092,7 @@ async function startApp() {
   document.getElementById('trips-filter').value = thisMonth;
   document.getElementById('exp-filter').value = thisMonth;
 
-  await Promise.all([loadSettings(), loadSites(), loadPurposes()]);
+  await Promise.all([loadSettings(), loadSites(), loadPurposes(), loadExpenseCategories()]);
   await Promise.all([loadTrips(), loadExpenses()]);
 }
 
@@ -1137,6 +1155,7 @@ function updateSiteDropdowns() {
     sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') +
     '<option value="__add__">➕ Add a Location...</option>';
   document.getElementById('pick-to').innerHTML = options;
+  populateExpenseLocationDropdown();
 }
 
 // Track which address field was last focused
@@ -1605,7 +1624,7 @@ function renderExpenses() {
   const tbody = document.getElementById('expenses-tbody');
   tbody.innerHTML = '';
   if (!expenses.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No expenses recorded yet.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No expenses recorded yet.</td></tr>';
     document.getElementById('expenses-total').textContent = '';
     return;
   }
@@ -1624,6 +1643,8 @@ function renderExpenses() {
     tr.innerHTML = `
       <td>${fmtDate(e.date)}</td>
       <td>${esc(e.description)}</td>
+      <td>${esc(e.location_name||'')}</td>
+      <td>${esc(e.category||'')}</td>
       <td style="text-align:right;font-weight:600">$${parseFloat(e.amount).toFixed(2)}</td>
       <td>${receiptHtml}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">🗑</button></td>
@@ -1634,11 +1655,69 @@ function renderExpenses() {
     `Total Expenses: <strong style="color:var(--success)">$${total.toFixed(2)}</strong>`;
 }
 
+let expenseCategories = [];
+
+async function loadExpenseCategories() {
+  expenseCategories = await api('GET', '/api/mileage/expense-categories');
+  const sel = document.getElementById('exp-category-pick');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— pick a category —</option>';
+  expenseCategories.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.category_text;
+    o.textContent = c.category_text;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+function pickExpenseLocation() {
+  const sel = document.getElementById('exp-location-pick');
+  const val = sel.value;
+  if (!val) return;
+  // val is "LocationName||Address" format
+  const parts = val.split('||');
+  // just store the location name - it's already set as the value
+  sel.dataset.chosen = parts[0];
+}
+
+function pickExpenseCategory() {
+  const val = document.getElementById('exp-category-pick').value;
+  if (val) document.getElementById('exp-category-new').value = '';
+}
+
+async function addExpenseCategory() {
+  const text = document.getElementById('exp-category-new').value.trim();
+  if (!text) { toast('Type a category name first.'); return; }
+  await api('POST', '/api/mileage/expense-categories', { category_text: text });
+  await loadExpenseCategories();
+  document.getElementById('exp-category-pick').value = text;
+  document.getElementById('exp-category-new').value = '';
+  toast('Category saved!');
+}
+
+function populateExpenseLocationDropdown() {
+  const sel = document.getElementById('exp-location-pick');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— pick a saved location —</option>';
+  sites.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name + '||' + s.address;
+    o.textContent = s.name ? s.name + ' — ' + s.address : s.address;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
 async function addExpense() {
   const date = document.getElementById('exp-date').value;
   const description = document.getElementById('exp-desc').value.trim();
   const amount = parseFloat(document.getElementById('exp-amount').value);
   const fileInput = document.getElementById('exp-receipt');
+  const locVal = document.getElementById('exp-location-pick').value;
+  const location_name = locVal ? locVal.split('||')[0] : '';
+  const category = document.getElementById('exp-category-new').value.trim()
+    || document.getElementById('exp-category-pick').value || '';
 
   if (!date || !description || isNaN(amount) || amount < 0) {
     toast('Please fill in Date, Description, and Amount.'); return;
@@ -1652,7 +1731,7 @@ async function addExpense() {
     receipt_data = await fileToBase64(f);
   }
 
-  await api('POST', '/api/mileage/expenses', { date, description, amount, receipt_data, receipt_name, receipt_type });
+  await api('POST', '/api/mileage/expenses', { date, description, amount, receipt_data, receipt_name, receipt_type, location_name, category });
   clearExpenseForm();
   await loadExpenses();
   toast('Expense added!');
@@ -1669,6 +1748,9 @@ function clearExpenseForm() {
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-amount').value = '';
   document.getElementById('exp-receipt').value = '';
+  document.getElementById('exp-location-pick').value = '';
+  document.getElementById('exp-category-pick').value = '';
+  document.getElementById('exp-category-new').value = '';
 }
 
 function viewReceipt(data, name, type) {

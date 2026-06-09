@@ -394,10 +394,10 @@ app.get('/api/mileage/expenses', requireAuth, async (req, res) => {
 
 app.post('/api/mileage/expenses', requireAuth, async (req, res) => {
   try {
-    const { date, description, amount, receipt_data, receipt_name, receipt_type } = req.body;
+    const { date, description, amount, receipt_data, receipt_name, receipt_type, location_name, category } = req.body;
     const r = await query(
-      'INSERT INTO mileage_expenses (user_id,date,description,amount,receipt_data,receipt_name,receipt_type) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-      [req.session.userId, date, description, parseFloat(amount), receipt_data || null, receipt_name || null, receipt_type || null]
+      'INSERT INTO mileage_expenses (user_id,date,description,amount,receipt_data,receipt_name,receipt_type,location_name,category) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [req.session.userId, date, description, parseFloat(amount), receipt_data || null, receipt_name || null, receipt_type || null, location_name || '', category || '']
     );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -406,6 +406,33 @@ app.post('/api/mileage/expenses', requireAuth, async (req, res) => {
 app.delete('/api/mileage/expenses/:id', requireAuth, async (req, res) => {
   try {
     await query('DELETE FROM mileage_expenses WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Expense Categories (shared across team)
+app.get('/api/mileage/expense-categories', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT * FROM mileage_expense_categories ORDER BY category_text');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/mileage/expense-categories', requireAuth, async (req, res) => {
+  try {
+    const { category_text } = req.body;
+    if (!category_text) return res.status(400).json({ error: 'category_text required' });
+    const r = await query(
+      'INSERT INTO mileage_expense_categories (category_text) VALUES ($1) ON CONFLICT (category_text) DO NOTHING RETURNING *',
+      [category_text.trim()]
+    );
+    res.json(r.rows[0] || { category_text: category_text.trim() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/mileage/expense-categories/:id', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM mileage_expense_categories WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
