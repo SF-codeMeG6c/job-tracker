@@ -1642,14 +1642,18 @@ function renderExpenses() {
       }
     }
     const tr = document.createElement('tr');
+    tr.id = 'exp-row-' + e.id;
     tr.innerHTML = `
       <td>${fmtDate(e.date)}</td>
       <td>${esc(e.description)}</td>
       <td>${esc(e.location_name||'')}</td>
       <td>${esc(e.category||'')}</td>
-      <td style="text-align:right;font-weight:600">$${parseFloat(e.amount).toFixed(2)}</td>
+      <td style="text-align:right;font-weight:600" id="exp-amt-cell-${e.id}">$${parseFloat(e.amount).toFixed(2)}</td>
       <td>${receiptHtml}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">🗑</button></td>
+      <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm" onclick="editExpenseAmount(${e.id},${parseFloat(e.amount).toFixed(2)})" title="Edit amount">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">🗑</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -1850,6 +1854,30 @@ async function addExpense() {
   clearExpenseForm();
   await loadExpenses();
   toast('Expense added!');
+}
+
+function editExpenseAmount(id, current) {
+  const cell = document.getElementById('exp-amt-cell-' + id);
+  cell.innerHTML = `
+    <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+      <span style="font-size:13px;font-weight:600">$</span>
+      <input type="number" id="exp-edit-input-${id}" value="${current}" min="0" step="0.01"
+        style="width:80px;padding:3px 6px;border:2px solid var(--primary);border-radius:5px;font-size:13px;font-weight:600;text-align:right"
+        onkeydown="if(event.key==='Enter')saveExpenseAmount(${id});if(event.key==='Escape')loadExpenses()">
+      <button class="btn btn-primary btn-sm" onclick="saveExpenseAmount(${id})">Save</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadExpenses()">✕</button>
+    </div>`;
+  document.getElementById('exp-edit-input-' + id).focus();
+  document.getElementById('exp-edit-input-' + id).select();
+}
+
+async function saveExpenseAmount(id) {
+  const input = document.getElementById('exp-edit-input-' + id);
+  const amount = parseFloat(input.value);
+  if (isNaN(amount) || amount < 0) { toast('Enter a valid amount.'); return; }
+  await api('PATCH', '/api/mileage/expenses/' + id, { amount });
+  await loadExpenses();
+  toast('Amount updated!');
 }
 
 async function deleteExpense(id) {

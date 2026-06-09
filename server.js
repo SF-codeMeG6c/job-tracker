@@ -403,6 +403,17 @@ app.post('/api/mileage/expenses', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.patch('/api/mileage/expenses/:id', requireAuth, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const r = await query(
+      'UPDATE mileage_expenses SET amount=$1 WHERE id=$2 AND user_id=$3 RETURNING *',
+      [parseFloat(amount), req.params.id, req.session.userId]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/mileage/expenses/:id', requireAuth, async (req, res) => {
   try {
     await query('DELETE FROM mileage_expenses WHERE id=$1 AND user_id=$2', [req.params.id, req.session.userId]);
