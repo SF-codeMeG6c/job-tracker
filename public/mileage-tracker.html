@@ -1717,19 +1717,23 @@ function populateExpenseLocationDropdown() {
 
 // ── Receipt total extraction ─────────────────────
 function extractTotalFromText(text) {
-  // PDF.js joins text items with spaces — insert newlines before label words
-  // so we can split into logical segments per label
-  let t = text
-    .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-    .replace(/(subtotal|tax|shipping|grand\s*total|total\s*invoice|invoice\s*total|total\s*due|total\s*amount|order\s*total|sale\s*total|charge\s*total|amount\s*due|balance\s*due|early\s*pay|\btotal\b)/gi, '\n$1');
+  // Normalize
+  let t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // STEP 1: Truncate at the first discount/conditional line.
+  // "Early Pay Discount", "Balance Due if paid online", etc. come AFTER the real total.
+  // Cutting here means we never accidentally pick those amounts.
+  const cutPat = /early\s*pay\s*discount|balance\s*due\s*if|paid\s*online|if\s*paid/i;
+  const cutMatch = cutPat.exec(t);
+  if (cutMatch) t = t.slice(0, cutMatch.index);
+
+  // STEP 2: Insert newlines before label keywords so splitting works
+  t = t.replace(/(grand\s*total|total\s*invoice\s*due|invoice\s*total|total\s*due|total\s*amount|order\s*total|sale\s*total|charge\s*total|amount\s*due|balance\s*due|\btotal\b)/gi, '\n$1');
 
   const lines = t.split('\n').map(l => l.trim()).filter(Boolean);
   const dollarPat = /\$?\s*([\d,]+\.\d{2})/g;
 
-  // Lines containing these phrases are discounted/adjusted amounts — SKIP them
-  const skipPat = /early\s*pay|if\s*paid|discount|balance\s*due\s*if|paid\s*online/i;
-
-  // Priority order — most specific first, generic "total" last
+  // STEP 3: Look for total keywords, highest priority first
   const priorities = [
     /grand\s*total/i,
     /total\s*invoice\s*due/i,
@@ -1740,17 +1744,14 @@ function extractTotalFromText(text) {
     /charge\s*total/i,
     /total\s*amount/i,
     /amount\s*due/i,
-    /^total[\s$]/i,
-    /\btotal\b/i,
     /balance\s*due/i,
+    /\btotal\b/i,
   ];
 
   for (const kw of priorities) {
     for (let i = 0; i < lines.length; i++) {
       if (!kw.test(lines[i])) continue;
-      if (skipPat.test(lines[i])) continue;   // skip discount/conditional lines
       const chunk = lines.slice(i, i + 3).join(' ');
-      if (skipPat.test(chunk)) continue;
       const matches = [...chunk.matchAll(dollarPat)];
       if (matches.length) {
         const raw = matches[matches.length - 1][1].replace(/,/g, '');
@@ -1760,9 +1761,8 @@ function extractTotalFromText(text) {
     }
   }
 
-  // Last resort: largest dollar amount on non-discount lines
-  const cleanText = lines.filter(l => !skipPat.test(l)).join(' ');
-  const allVals = (cleanText.match(/\$?\s*[\d,]+\.\d{2}/g) || [])
+  // STEP 4: Fallback — largest dollar amount in the (already truncated) text
+  const allVals = (t.match(/\$?\s*[\d,]+\.\d{2}/g) || [])
     .map(m => parseFloat(m.replace(/[$,\s]/g, '')))
     .filter(v => v > 0 && v < 100000);
   return allVals.length ? Math.max(...allVals) : null;
