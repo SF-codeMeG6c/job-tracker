@@ -1718,16 +1718,20 @@ function extractTotalFromText(text) {
   const lines = t.split('\n').map(l => l.trim()).filter(Boolean);
 
   // Keywords that indicate the final total line (ordered by priority)
+  // NOTE: plain TOTAL must rank above Balance Due — Balance Due can reflect discounts
   const totalKeywords = [
     /grand\s*total/i,
     /order\s*total/i,
+    /total\s*invoice\s*due/i,
+    /invoice\s*total/i,
     /total\s*due/i,
-    /amount\s*due/i,
-    /balance\s*due/i,
     /total\s*amount/i,
     /charge\s*total/i,
     /sale\s*total/i,
-    /\btotal\b/i,
+    /amount\s*due/i,
+    /^total$/i,              // exact "TOTAL" line only
+    /\btotal\b(?!.*discount)/i, // TOTAL not followed by "discount"
+    /balance\s*due(?!\s+if)/i,  // Balance Due but NOT "Balance Due if..."
   ];
 
   // Dollar pattern: $1,234.56 or 1,234.56 or 1234.56
