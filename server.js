@@ -12,7 +12,13 @@ const PARTY_TYPES = ['Engineer', 'Abatement', 'Adjuster', 'Edison', 'Bld Dept', 
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 app.set('trust proxy', 1);
 app.use(session({
