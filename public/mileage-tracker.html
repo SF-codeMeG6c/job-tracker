@@ -748,13 +748,9 @@
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
-            <!-- Camera-only input — visually hidden but NOT display:none (iOS Safari blocks camera on display:none) -->
-            <input type="file" id="exp-receipt-camera" accept="image/*" capture="environment"
-              style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0"
-              onchange="syncReceiptFromCamera(this)">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px;flex:1;min-width:0" onchange="scanReceiptForTotal(this)">
-              <button type="button" onclick="document.getElementById('exp-receipt-camera').click()"
+              <button type="button" onclick="openCameraCapture()"
                 style="background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
                 📷 Take Photo
               </button>
@@ -999,6 +995,27 @@
     <button class="modal-close" onclick="closeModal()">&times;</button>
     <h2>Receipt</h2>
     <div id="receipt-content"></div>
+  </div>
+</div>
+
+<!-- Camera capture modal -->
+<div class="modal-overlay" id="camera-modal" style="background:rgba(0,0,0,.92)">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:600px;padding:20px">
+    <div style="color:#fff;font-size:16px;font-weight:600">Point camera at receipt and tap Snap</div>
+    <video id="camera-video" autoplay playsinline
+      style="width:100%;max-width:560px;border-radius:10px;background:#000;max-height:60vh;object-fit:cover"></video>
+    <canvas id="camera-canvas" style="display:none"></canvas>
+    <div style="display:flex;gap:12px">
+      <button onclick="snapPhoto()"
+        style="background:#fff;color:var(--primary);border:none;border-radius:50px;padding:14px 36px;font-size:16px;font-weight:700;cursor:pointer">
+        📸 Snap
+      </button>
+      <button onclick="closeCameraModal()"
+        style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:50px;padding:14px 24px;font-size:15px;cursor:pointer">
+        Cancel
+      </button>
+    </div>
+    <div id="camera-error" style="color:#ff6b6b;font-size:13px;text-align:center;display:none"></div>
   </div>
 </div>
 
@@ -1797,15 +1814,59 @@ function extractTotalFromText(text) {
   return vals.length ? vals[vals.length - 1] : null;
 }
 
-function syncReceiptFromCamera(cameraInput) {
-  // Copy the photo taken into the main file input, then run OCR
-  const file = cameraInput.files[0];
-  if (!file) return;
-  const dt = new DataTransfer();
-  dt.items.add(file);
-  const mainInput = document.getElementById('exp-receipt');
-  mainInput.files = dt.files;
-  scanReceiptForTotal(mainInput);
+// ── Camera capture ───────────────────────────────
+let cameraStream = null;
+
+async function openCameraCapture() {
+  const errEl = document.getElementById('camera-error');
+  errEl.style.display = 'none';
+  document.getElementById('camera-modal').style.display = 'flex';
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    document.getElementById('camera-video').srcObject = cameraStream;
+  } catch (err) {
+    let msg = 'Camera not available.';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      msg = 'Camera permission denied. Go to Settings → Safari → Camera and set it to Allow, then try again.';
+    } else if (err.name === 'NotFoundError') {
+      msg = 'No camera found on this device.';
+    }
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+    document.getElementById('camera-video').style.display = 'none';
+  }
+}
+
+function snapPhoto() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  canvas.toBlob(blob => {
+    const file = new File([blob], 'receipt-photo.jpg', { type: 'image/jpeg' });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const input = document.getElementById('exp-receipt');
+    input.files = dt.files;
+    closeCameraModal();
+    scanReceiptForTotal(input);
+  }, 'image/jpeg', 0.92);
+}
+
+function closeCameraModal() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('camera-modal').style.display = 'none';
+  document.getElementById('camera-video').srcObject = null;
+  document.getElementById('camera-video').style.display = 'block';
+  document.getElementById('camera-error').style.display = 'none';
 }
 
 async function scanReceiptForTotal(input) {
