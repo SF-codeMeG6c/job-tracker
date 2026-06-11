@@ -748,8 +748,10 @@
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
-            <!-- Hidden camera-only input — used by Take Photo button on mobile -->
-            <input type="file" id="exp-receipt-camera" accept="image/*" capture="environment" style="display:none" onchange="syncReceiptFromCamera(this)">
+            <!-- Camera-only input — visually hidden but NOT display:none (iOS Safari blocks camera on display:none) -->
+            <input type="file" id="exp-receipt-camera" accept="image/*" capture="environment"
+              style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0"
+              onchange="syncReceiptFromCamera(this)">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px;flex:1;min-width:0" onchange="scanReceiptForTotal(this)">
               <button type="button" onclick="document.getElementById('exp-receipt-camera').click()"
