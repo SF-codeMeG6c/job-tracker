@@ -1719,58 +1719,67 @@ function populateExpenseLocationDropdown() {
 function extractTotalFromText(text) {
   let t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // STEP 1: Cut before discount/conditional lines — these always come AFTER the real total
-  // e.g. HomeDepot "Early Pay Discount" and "Balance Due if paid online"
+  // STEP 1: Cut before HomeDepot early-pay / balance-if-paid lines
   const cutPat = /early\s*pay\s*discount|balance\s*due\s*if|paid\s*online|if\s*paid/i;
   const cutMatch = cutPat.exec(t);
   if (cutMatch) t = t.slice(0, cutMatch.index);
 
-  // STEP 2: Check for "$X,XXX.XX Paid" — City of Lakewood permit style (large amount at top)
+  // STEP 2: Cut before register-receipt cash tender / change lines
+  // e.g. Menifee: "CASH $45.00 / Change due -$0.75" appear after the real Total
+  const cashCut = /^Change\s*due|^\s*CASH\b.*\$[\d]/im;
+  const cashMatch = cashCut.exec(t);
+  if (cashMatch) t = t.slice(0, cashMatch.index);
+
+  // STEP 3: Check for "$X,XXX.XX Paid" at top (City of Lakewood permit style)
   const paidMatch = t.match(/\$([\d,]+\.\d{2})\s*Paid/i);
   if (paidMatch) {
     const val = parseFloat(paidMatch[1].replace(/,/g, ''));
     if (val >= 1) return val;
   }
 
-  // STEP 3: Keyword search — insert newlines before labels so each is on its own line
-  const labeled = t.replace(/(invoice\s*total|total\s*paid|total\s*balance\s*due|payment\s*amount|grand\s*total|total\s*invoice\s*due|total\s*due|order\s*total|sale\s*total|charge\s*total|total\s*amount|amount\s*due|balance\s*due|\btotal\b)/gi, '\n$1');
-  const lines = labeled.split('\n').map(l => l.trim()).filter(Boolean);
-  // Match amounts with OR without leading $ (e.g. Ganahl Lumber: "INVOICE TOTAL 88.12")
-  const dollarPat = /\$?\s*([\d,]+\.\d{2})/g;
-
-  const priorities = [
-    /invoice\s*total/i,          // Ganahl Lumber
-    /total\s*paid/i,             // City of Lakewood permit
-    /total\s*balance\s*due/i,    // City of Lakewood business license
-    /payment\s*amount/i,         // City of Lakewood business license
-    /grand\s*total/i,
-    /total\s*invoice\s*due/i,
-    /total\s*due/i,
-    /order\s*total/i,
-    /sale\s*total/i,
-    /charge\s*total/i,
-    /total\s*amount/i,
-    /amount\s*due/i,
-    /balance\s*due/i,
-    /\btotal\b/i,
+  // STEP 4: Compound keyword search directly on raw text — NO pre-splitting.
+  // Pre-splitting breaks multi-word labels like "ORDER TOTAL" into separate lines.
+  // Each pattern matches: label + up to 50 chars + $ + amount
+  const $ = /\$\s*([\d,]+\.\d{2})/;
+  const compoundPatterns = [
+    /invoice\s*total[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,       // Ganahl Lumber
+    /order\s*total[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,         // Floor & Decor
+    /total\s*paid[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,          // City of Lakewood permit
+    /total\s*balance\s*due[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i, // Lakewood business license
+    /payment\s*amount[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,      // Lakewood business license
+    /grand\s*total[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /total\s*invoice\s*due[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /total\s*due[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /sale\s*total[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /charge\s*total[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /total\s*amount[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /amount\s*due[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /balance\s*due[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,
+    /\btotal\b[\s\S]{0,50}?\$\s*([\d,]+\.\d{2})/i,             // plain "Total"
   ];
 
-  for (const kw of priorities) {
-    for (let i = 0; i < lines.length; i++) {
-      if (!kw.test(lines[i])) continue;
-      const chunk = lines.slice(i, i + 3).join(' ');
-      const matches = [...chunk.matchAll(dollarPat)];
-      if (matches.length) {
-        const raw = matches[matches.length - 1][1].replace(/,/g, '');
-        const val = parseFloat(raw);
-        if (val >= 1 && val < 1000000) return val;
-      }
+  for (const pat of compoundPatterns) {
+    const m = t.match(pat);
+    if (m) {
+      const val = parseFloat(m[1].replace(/,/g, ''));
+      if (val >= 1 && val < 1000000) return val;
     }
   }
 
-  // STEP 4: Fallback — take the LAST dollar amount in the (already truncated) text.
-  // After cutting discount lines, the invoice total is almost always the last number.
-  // Works for Ganahl Lumber where labels don't extract cleanly from PDF columns.
+  // STEP 5: No-dollar-sign amounts (Ganahl Lumber: "INVOICE TOTAL 88.12")
+  const noSign = [
+    /invoice\s*total\s+([\d,]+\.\d{2})/i,
+    /\btotal\b\s+([\d,]+\.\d{2})/i,
+  ];
+  for (const pat of noSign) {
+    const m = t.match(pat);
+    if (m) {
+      const val = parseFloat(m[1].replace(/,/g, ''));
+      if (val >= 1 && val < 1000000) return val;
+    }
+  }
+
+  // STEP 6: Fallback — last dollar amount in the (already truncated) text
   const allMatches = [...t.matchAll(/\$?\s*([\d,]+\.\d{2})/g)];
   const vals = allMatches
     .map(m => parseFloat(m[1].replace(/,/g, '')))
