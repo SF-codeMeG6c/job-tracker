@@ -748,14 +748,14 @@
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
-            <!-- Single input: on iPhone/iPad shows native sheet with Take Photo / Photo Library / Files -->
+            <!-- label triggers file input directly — required for iOS Safari (JS .click() is blocked) -->
             <input type="file" id="exp-receipt" accept="image/*,.pdf" style="display:none" onchange="scanReceiptForTotal(this)">
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" onclick="document.getElementById('exp-receipt').click()"
-                style="background:var(--primary);color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <label for="exp-receipt"
+                style="background:var(--primary);color:#fff;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;display:inline-block;user-select:none">
                 📷 Take Photo / Choose File
-              </button>
-              <span id="receipt-filename" style="font-size:12px;color:var(--text-muted);align-self:center;font-style:italic"></span>
+              </label>
+              <span id="receipt-filename" style="font-size:12px;color:var(--text-muted);font-style:italic"></span>
             </div>
             <span class="hint" id="receipt-scan-hint">On iPhone/iPad tap the button — choose <strong>Take Photo</strong> or pick from your files</span>
           </div>
