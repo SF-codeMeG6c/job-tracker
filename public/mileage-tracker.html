@@ -748,8 +748,16 @@
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
             <label>Receipt (photo or PDF)</label>
-            <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px" onchange="scanReceiptForTotal(this)">
-            <span class="hint" id="receipt-scan-hint">Saved to the cloud — amount will be read automatically from receipt</span>
+            <!-- Hidden camera-only input — used by Take Photo button on mobile -->
+            <input type="file" id="exp-receipt-camera" accept="image/*" capture="environment" style="display:none" onchange="syncReceiptFromCamera(this)">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="file" id="exp-receipt" accept="image/*,.pdf" style="padding:5px;flex:1;min-width:0" onchange="scanReceiptForTotal(this)">
+              <button type="button" onclick="document.getElementById('exp-receipt-camera').click()"
+                style="background:var(--primary);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+                📷 Take Photo
+              </button>
+            </div>
+            <span class="hint" id="receipt-scan-hint">Tap <strong>Take Photo</strong> to use your camera, or choose an existing file — amount fills automatically</span>
           </div>
         </div>
         <div class="btn-group" style="margin-top:12px">
@@ -1785,6 +1793,17 @@ function extractTotalFromText(text) {
     .map(m => parseFloat(m[1].replace(/,/g, '')))
     .filter(v => v >= 1 && v < 1000000);
   return vals.length ? vals[vals.length - 1] : null;
+}
+
+function syncReceiptFromCamera(cameraInput) {
+  // Copy the photo taken into the main file input, then run OCR
+  const file = cameraInput.files[0];
+  if (!file) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const mainInput = document.getElementById('exp-receipt');
+  mainInput.files = dt.files;
+  scanReceiptForTotal(mainInput);
 }
 
 async function scanReceiptForTotal(input) {
