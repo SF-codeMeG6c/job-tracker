@@ -569,11 +569,17 @@
               </div>
               <div class="form-group" style="flex:2">
                 <label class="pro-label">From Address</label>
-                <input type="text" id="trip-from" placeholder="Starting address" class="pro-input">
+                <div style="display:flex;gap:6px">
+                  <input type="text" id="trip-from" placeholder="Starting address" class="pro-input" style="flex:1">
+                  <button class="btn-mic" onclick="startDictation('trip-from')" id="mic-trip-from" title="Speak from address">🎤</button>
+                </div>
               </div>
               <div class="form-group" style="flex:2">
                 <label class="pro-label">To Address</label>
-                <input type="text" id="trip-to" placeholder="Destination address" class="pro-input">
+                <div style="display:flex;gap:6px">
+                  <input type="text" id="trip-to" placeholder="Destination address" class="pro-input" style="flex:1">
+                  <button class="btn-mic" onclick="startDictation('trip-to')" id="mic-trip-to" title="Speak to address">🎤</button>
+                </div>
               </div>
             </div>
             <div class="form-row" style="margin-bottom:0">
@@ -2327,7 +2333,9 @@ function startDictation(fieldId) {
 
   recognition.onresult = (e) => {
     const transcript = e.results[0][0].transcript;
-    document.getElementById(fieldId).value = transcript;
+    const field = document.getElementById(fieldId);
+    field.value = transcript;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
     toast('✓ "' + transcript + '"');
   };
 
