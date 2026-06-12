@@ -2064,6 +2064,58 @@ function renderMileageReport(rTrips, rExp, empName, monthName, rate) {
 
       '</div>' +
     '</div>';
+  appendReceiptAppendix(rExp);
+}
+
+// Appends copies of receipt images/PDFs to the report so they print with it
+async function appendReceiptAppendix(rExp) {
+  const withReceipts = (rExp || []).filter(e => e.receipt_data);
+  if (!withReceipts.length) return;
+  const body = document.getElementById('report-body');
+  const wrap = document.createElement('div');
+  wrap.id = 'receipt-appendix';
+  wrap.style.cssText = 'page-break-before:always;margin-top:24px';
+  wrap.innerHTML = '<h3 style="font-size:15px;font-weight:700;color:var(--primary);border-bottom:2px solid var(--primary);padding-bottom:6px;margin-bottom:14px">Receipt Attachments</h3>';
+  body.appendChild(wrap);
+
+  for (const e of withReceipts) {
+    const box = document.createElement('div');
+    box.style.cssText = 'page-break-inside:avoid;margin-bottom:18px;border:1px solid #e5e7eb;border-radius:6px;padding:10px';
+    box.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:6px">' +
+      fmtDate(e.date) + ' — ' + esc(e.description || '') + ' — $' + parseFloat(e.amount).toFixed(2) + '</div>';
+    wrap.appendChild(box);
+
+    if ((e.receipt_type || '').startsWith('image/')) {
+      const img = document.createElement('img');
+      img.src = e.receipt_data;
+      img.style.cssText = 'max-width:100%;max-height:850px;border:1px solid #eee;border-radius:4px';
+      box.appendChild(img);
+    } else if ((e.receipt_type || '') === 'application/pdf') {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const bin = atob(e.receipt_data.split(',')[1]);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+        for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) {
+          const page = await pdf.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          const img = document.createElement('img');
+          img.src = canvas.toDataURL('image/jpeg', 0.85);
+          img.style.cssText = 'max-width:100%;border:1px solid #eee;border-radius:4px;margin-top:4px;page-break-inside:avoid';
+          box.appendChild(img);
+        }
+      } catch (err) {
+        box.insertAdjacentHTML('beforeend',
+          '<div style="font-size:12px;color:#999">📄 ' + esc(e.receipt_name || 'receipt.pdf') + ' (preview unavailable)</div>');
+      }
+    }
+  }
 }
 
 function renderJobReport(rTrips, empName, monthName, locationFilter) {
